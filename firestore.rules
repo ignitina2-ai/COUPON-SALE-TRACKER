@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Transactions
+    match /transactions/{transactionId} {
+      allow read, write: if true;
+    }
+
+    // Sponsors
+    match /sponsors/{sponsorId} {
+      allow read, write: if true;
+    }
+
+    // Income and Expenses
+    match /incomeExpenses/{incomeExpenseId} {
+      allow read, write: if true;
+    }
+
+    // Secretary Handovers
+    match /secretaryHandovers/{secretaryHandoverId} {
+      allow read, write: if true;
+    }
+
+    // App Settings
+    match /settings/{settingsId} {
+      allow read, write: if true;
+    }
+
+    // Allowed Users (Whitelist Registry)
+    match /allowedUsers/{emailId} {
+      allow read, write: if true;
+    }
+
+    // Active Sessions (Allows all authenticated and active devices to announce presence)
+    match /activeSessions/{sessionId} {
+      allow read, write: if true;
+    }
+
+    // Prize Collection (Tracking & Received Amounts - shared trust registry)
+    match /prizeCollection/{docId} {
+      allow read, write: if true;
+    }
+
+    // Test connection
+    match /test/{testId} {
+      allow read, write: if true;
+    }
+  }
+}
