@@ -1,54 +1,71 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    function isAuthenticated() {
-      return request.auth != null;
+
+    function isSuperAdmin() {
+      return request.auth != null
+        && request.auth.token.email in [
+          'ignitina2@gmail.com',
+          'stcasimircharitabletrust@gmail.com'
+        ];
+    }
+
+    function isAllowedUser() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/allowedUsers/$(request.auth.token.email))
+        && get(/databases/$(database)/documents/allowedUsers/$(request.auth.token.email)).data.status == 'ACTIVE';
+    }
+
+    function canUseApp() {
+      return isSuperAdmin() || isAllowedUser();
     }
 
     // Transactions
     match /transactions/{transactionId} {
-      allow read, write: if true;
+      allow read, write: if canUseApp();
     }
 
     // Sponsors
     match /sponsors/{sponsorId} {
-      allow read, write: if true;
+      allow read, write: if canUseApp();
     }
 
     // Income and Expenses
     match /incomeExpenses/{incomeExpenseId} {
-      allow read, write: if true;
+      allow read, write: if canUseApp();
     }
 
     // Secretary Handovers
     match /secretaryHandovers/{secretaryHandoverId} {
-      allow read, write: if true;
+      allow read, write: if canUseApp();
     }
 
     // App Settings
     match /settings/{settingsId} {
-      allow read, write: if true;
+      allow read, write: if canUseApp();
     }
 
     // Allowed Users (Whitelist Registry)
     match /allowedUsers/{emailId} {
-      allow read, write: if true;
+      allow read: if isSuperAdmin()
+        || (request.auth != null && request.auth.token.email == emailId);
+      allow create, update, delete: if isSuperAdmin();
     }
 
     // Active Sessions (Allows all authenticated and active devices to announce presence)
     match /activeSessions/{sessionId} {
-      allow read, write: if true;
+      allow read, write: if canUseApp();
     }
 
     // Prize Collection (Tracking & Received Amounts - shared trust registry)
     match /prizeCollection/{docId} {
-      allow read, write: if true;
+      allow read, write: if canUseApp();
     }
 
     // Test connection
     match /test/{testId} {
-      allow read, write: if true;
+      allow read: if request.auth != null;
+      allow write: if isSuperAdmin();
     }
   }
 }

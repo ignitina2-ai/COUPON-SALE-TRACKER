@@ -1,8 +1,6 @@
 {
-  "name": "Remix COUPON SALE TRACKER",
+  "name": "SCC TRUST LUCKY COUPON SALE 2026",
   "description": "Comprehensive Coupon Sale Management app with dashboard, credit management, prize sponsors, and export features.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
