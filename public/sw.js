@@ -2,14 +2,15 @@ importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js'
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js');
 
 const firebaseConfig = {
-  projectId: "coupon-sale-tracker-2026",
-  appId: "1:812000983987:web:d89472f323dc47fc39e9c6",
-  apiKey: "AIzaSyA2s4594fQH8dA_gemyIZ1IBS4z-xZJ7AQ",
-  authDomain: "coupon-sale-tracker-2026.firebaseapp.com",
-  storageBucket: "coupon-sale-tracker-2026.firebasestorage.app",
-  messagingSenderId: "812000983987"
+  apiKey: "AIzaSyBaKmEYUtyRk7bgz03Df1Gfy55p6hlkByc",
+  authDomain: "coupon-sale-tracker.firebaseapp.com",
+  projectId: "coupon-sale-tracker",
+  storageBucket: "coupon-sale-tracker.firebasestorage.app",
+  messagingSenderId: "755043690981",
+  appId: "1:755043690981:web:8c5ae52f6befe77702e70c",
+  measurementId: "G-DJH27GY09Q"
 };
-const DB_ID = "ai-studio-dfea9a9b-0b0d-4e72-96f5-ba3821d75bbb";
+const DB_ID = "(default)";
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.app().firestore(DB_ID);
