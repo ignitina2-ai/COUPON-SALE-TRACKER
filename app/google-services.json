@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "755043690981",
+    "project_id": "coupon-sale-tracker",
+    "storage_bucket": "coupon-sale-tracker.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:755043690981:android:b401b566bfa4a74b02e70c",
+        "android_client_info": {
+          "package_name": "com.coupon_sale_tracker"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQCnaOgUyL2IIlH9BR8hZtyLIizU1hqmo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
