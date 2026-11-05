@@ -57,8 +57,6 @@ import {
   onSnapshot, 
   getDoc,
   getDocs,
-  getDocsFromServer,
-  getDocFromServer,
   writeBatch
 } from 'firebase/firestore';
 import { signOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
@@ -247,8 +245,7 @@ export default function App() {
       // Check allowedUsers whitelist registry for helper sub-users
       try {
         const userDocRef = doc(db, 'allowedUsers', email);
-        const serverSnapshot = await getDocFromServer(userDocRef).catch(() => null);
-        const snapshot = serverSnapshot || await getDoc(userDocRef);
+        const snapshot = await getDoc(userDocRef);
 
         if (snapshot.exists() && snapshot.data()?.status === 'ACTIVE') {
           const schema = snapshot.data() as AllowedUser;
@@ -294,13 +291,23 @@ export default function App() {
         setFirestoreError(null);
       };
 
-      const refreshCollectionsFromServer = async () => {
+      const handleSyncError = (category: string, err: any) => {
+        console.warn(`${category} sync notice:`, err);
+        const msg = err?.message || String(err);
+        if (err?.code === 'permission-denied') {
+          setFirestoreError(`${category}: Permission denied. Please verify your account access.`);
+        } else if (!err?.code || (err.code !== 'unavailable' && !msg.includes('offline') && !msg.includes('Backend didn\'t respond'))) {
+          setFirestoreError(`${category}: ${msg}`);
+        }
+      };
+
+      const refreshCollections = async () => {
         try {
           const [transactionsSnap, sponsorsSnap, incomeExpensesSnap, handoversSnap] = await Promise.all([
-            getDocsFromServer(collection(db, 'transactions')),
-            getDocsFromServer(collection(db, 'sponsors')),
-            getDocsFromServer(collection(db, 'incomeExpenses')),
-            getDocsFromServer(collection(db, 'secretaryHandovers')),
+            getDocs(collection(db, 'transactions')),
+            getDocs(collection(db, 'sponsors')),
+            getDocs(collection(db, 'incomeExpenses')),
+            getDocs(collection(db, 'secretaryHandovers')),
           ]);
 
           setAppData(prev => ({
@@ -312,8 +319,7 @@ export default function App() {
           }));
           clearErrorOnSuccess();
         } catch (error) {
-          console.error('Initial Firestore server refresh failed:', error);
-          setFirestoreError(`Cloud refresh failed: ${error instanceof Error ? error.message : String(error)}`);
+          console.warn('Initial Firestore collections load notice:', error);
         }
       };
 
@@ -349,8 +355,7 @@ export default function App() {
         setAppData(prev => ({ ...prev, transactions: list }));
         clearErrorOnSuccess();
       }, (err) => {
-        console.error("Transactions sync error:", err);
-        setFirestoreError(`Transactions: ${err.message || String(err)}`);
+        handleSyncError("Transactions", err);
       });
       activeSubscriptions.push(unsubTransactions);
 
@@ -379,8 +384,7 @@ export default function App() {
         setAppData(prev => ({ ...prev, sponsors: list }));
         clearErrorOnSuccess();
       }, (err) => {
-        console.error("Sponsors sync error:", err);
-        setFirestoreError(`Sponsors: ${err.message || String(err)}`);
+        handleSyncError("Sponsors", err);
       });
       activeSubscriptions.push(unsubSponsors);
 
@@ -411,8 +415,7 @@ export default function App() {
         setAppData(prev => ({ ...prev, incomeExpenses: list }));
         clearErrorOnSuccess();
       }, (err) => {
-        console.error("IncomeExpenses sync error:", err);
-        setFirestoreError(`Income/Expenses: ${err.message || String(err)}`);
+        handleSyncError("Income/Expenses", err);
       });
       activeSubscriptions.push(unsubIncomeExpenses);
 
@@ -441,8 +444,7 @@ export default function App() {
         setAppData(prev => ({ ...prev, secretaryHandovers: list }));
         clearErrorOnSuccess();
       }, (err) => {
-        console.error("SecretaryHandovers sync error:", err);
-        setFirestoreError(`Handovers: ${err.message || String(err)}`);
+        handleSyncError("Handovers", err);
       });
       activeSubscriptions.push(unsubHandovers);
 
@@ -456,8 +458,7 @@ export default function App() {
           } as AllowedUser)));
           clearErrorOnSuccess();
         }, (err) => {
-          console.error("AllowedUsers sync error:", err);
-          setFirestoreError(`Allowed Users: ${err.message || String(err)}`);
+          handleSyncError("Allowed Users", err);
         });
         activeSubscriptions.push(unsubAllowedUsers);
       } else if (currentUserEmail) {
@@ -480,13 +481,12 @@ export default function App() {
           });
           clearErrorOnSuccess();
         }, (err) => {
-          console.error("Current allowed user sync error:", err);
-          setFirestoreError(`User permissions sync: ${err.message || String(err)}`);
+          handleSyncError("User permissions sync", err);
         });
         activeSubscriptions.push(unsubCurrentAllowedUser);
       }
 
-      void refreshCollectionsFromServer();
+      void refreshCollections();
 
       // 5.5 Active Sessions Listener
       const unsubActiveSessions = onSnapshot(collection(db, 'activeSessions'), (snap) => {
@@ -499,8 +499,7 @@ export default function App() {
         setActiveSessions(list);
         clearErrorOnSuccess();
       }, (err) => {
-        console.error("ActiveSessions sync error:", err);
-        setFirestoreError(`Active Sessions: ${err.message || String(err)}`);
+        handleSyncError("Active Sessions", err);
       });
       activeSubscriptions.push(unsubActiveSessions);
 
@@ -521,8 +520,7 @@ export default function App() {
         }
         clearErrorOnSuccess();
       }, (err) => {
-        console.error("Settings sync error:", err);
-        setFirestoreError(`Global Settings: ${err.message || String(err)}`);
+        handleSyncError("Global Settings", err);
       });
       activeSubscriptions.push(unsubSettings);
 
@@ -647,7 +645,7 @@ export default function App() {
           err.message.includes('developer-approved testers')
         ))
       ) {
-        setLoginError("Google Error 403 (access_denied): The app is in Testing mode. In Google Cloud Console (Project gen-lang-client-0728385363), go to OAuth consent screen > Test users > add ignitina2@gmail.com and save.");
+        setLoginError("Google Error 403 (access_denied): The app is in Testing mode. In Google Cloud Console (Project coupon-sale-tracker), go to OAuth consent screen > Test users > add ignitina2@gmail.com and save.");
       } else if (err.code !== 'auth/popup-closed-by-user') {
         setLoginError(err.message || 'Failed to connect Google Drive.');
       }
@@ -1875,7 +1873,7 @@ export default function App() {
                   </h3>
                   <div className="text-xs font-semibold leading-relaxed text-slate-700 space-y-2">
                     <p>
-                      The app is currently having trouble talking to the cloud database. We have successfully provisioned your Firestore Database for project <strong className="text-slate-900 font-black">coupon-sale-tracker-2026</strong> and deployed the security rules.
+                      The app is currently having trouble talking to the cloud database. We have successfully configured your Firestore Database for project <strong className="text-slate-900 font-black">coupon-sale-tracker</strong> and deployed the security rules.
                     </p>
                     <p className="text-amber-800 font-bold">
                       ഇത് പരിഹരിക്കാൻ: 1) ഫയർബേസ് കൺസോളിൽ ഫയർസ്റ്റോർ പൂർണ്ണമായി എനേബിൾ ആണെന്ന് ഉറപ്പാക്കുക. 2) താഴെയുള്ള "Reload Connections" ബട്ടൺ ക്ലിക്ക് ചെയ്യുക.

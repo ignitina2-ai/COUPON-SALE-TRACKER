@@ -4,17 +4,26 @@ import {
   initializeFirestore, 
   persistentLocalCache, 
   persistentMultipleTabManager, 
-  doc, 
-  getDocFromServer,
   getFirestore,
   memoryLocalCache,
   waitForPendingWrites
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getAnalytics, isSupported } from 'firebase/analytics';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase App
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+
+// Initialize Analytics if supported in the current environment
+export let analytics: any = null;
+if (typeof window !== 'undefined') {
+  isSupported().then((supported) => {
+    if (supported) {
+      analytics = getAnalytics(app);
+    }
+  }).catch(() => {});
+}
 
 // Initialize Firestore with robust try-catch fallback and long polling enabled
 let firestoreDb;
@@ -127,15 +136,3 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-// Validation helper to verify user credentials and database channel
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && (error.message.includes('offline') || error.message.includes('unavailable'))) {
-      console.warn("Firestore status: Local-only buffering active (offline cache enabled) or server temporarily unreachable.");
-    }
-  }
-}
-// Delay slightly to let the background connection establish before forcing server-side validation
-setTimeout(testConnection, 2000);

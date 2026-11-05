@@ -141,7 +141,7 @@ export default function LoginPage({
 
               <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-2 text-[10px] text-slate-300">
                 <a 
-                  href="https://console.cloud.google.com/apis/credentials/consent?project=gen-lang-client-0728385363" 
+                  href="https://console.cloud.google.com/apis/credentials/consent?project=coupon-sale-tracker" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="block bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded-lg text-center transition-all cursor-pointer shadow-sm text-xs"

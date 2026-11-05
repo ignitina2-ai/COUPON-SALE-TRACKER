@@ -13,7 +13,7 @@ const firebaseConfig = {
 const DB_ID = "(default)";
 
 firebase.initializeApp(firebaseConfig);
-const db = firebase.app().firestore(DB_ID);
+const db = DB_ID && DB_ID !== '(default)' ? firebase.app().firestore(DB_ID) : firebase.app().firestore();
 
 let notificationsEnabledGlobal = true;
 
