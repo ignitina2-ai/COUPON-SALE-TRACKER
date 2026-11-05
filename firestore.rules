@@ -11,15 +11,21 @@ service cloud.firestore {
         ];
     }
 
+    function isAllowedUserDoc(emailStr) {
+      return exists(/databases/$(database)/documents/allowedUsers/$(emailStr))
+        && (
+          get(/databases/$(database)/documents/allowedUsers/$(emailStr)).data.status == 'ACTIVE'
+          || get(/databases/$(database)/documents/allowedUsers/$(emailStr)).data.status == 'active'
+          || !('status' in get(/databases/$(database)/documents/allowedUsers/$(emailStr)).data)
+        );
+    }
+
     function isAllowedUser() {
       return request.auth != null
         && request.auth.token.email != null
         && (
-          (exists(/databases/$(database)/documents/allowedUsers/$(request.auth.token.email.lower()))
-            && get(/databases/$(database)/documents/allowedUsers/$(request.auth.token.email.lower())).data.status == 'ACTIVE')
-          ||
-          (exists(/databases/$(database)/documents/allowedUsers/$(request.auth.token.email))
-            && get(/databases/$(database)/documents/allowedUsers/$(request.auth.token.email)).data.status == 'ACTIVE')
+          isAllowedUserDoc(request.auth.token.email.lower())
+          || isAllowedUserDoc(request.auth.token.email)
         );
     }
 

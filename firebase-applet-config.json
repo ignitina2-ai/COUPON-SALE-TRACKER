@@ -1,9 +1,12 @@
 {
+  "projectId": "coupon-sale-tracker",
+  "appId": "1:755043690981:web:8c5ae52f6befe77702e70c",
   "apiKey": "AIzaSyBaKmEYUtyRk7bgz03Df1Gfy55p6hlkByc",
   "authDomain": "coupon-sale-tracker.firebaseapp.com",
-  "projectId": "coupon-sale-tracker",
+  "firestoreDatabaseId": "ai-studio-couponsaletracke-7fc228de-0c3f-4882-abf0-78b99a061b0c",
   "storageBucket": "coupon-sale-tracker.firebasestorage.app",
   "messagingSenderId": "755043690981",
-  "appId": "1:755043690981:web:8c5ae52f6befe77702e70c",
-  "measurementId": "G-DJH27GY09Q"
+  "measurementId": "G-DJH27GY09Q",
+  "oAuthClientId": "755043690981-cqf8q2i8o9jldkpnug66ce54n9pvvmeh.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
 }

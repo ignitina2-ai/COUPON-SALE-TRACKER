@@ -78,6 +78,7 @@ import {
 } from './lib/googleDriveSheets';
 
 const STORAGE_KEY = 'coupon_sale_app_data_2026';
+const ALLOWED_USERS_KEY = 'coupon_sale_allowed_users_2026';
 
 const DEFAULT_CREDIT_SETTINGS: CreditSettings = {
   reminderEmailTemplate: "Hi {name},\n\nThis is a friendly reminder regarding your outstanding balance of ₹{amount} for the coupons purchased on {date}.\n\nPlease clear the balance at your earliest convenience.\n\nThank you!",
@@ -96,7 +97,16 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [allowedUsers, setAllowedUsers] = useState<AllowedUser[]>([]);
+  const [allowedUsers, setAllowedUsers] = useState<AllowedUser[]>(() => {
+    try {
+      const saved = localStorage.getItem(ALLOWED_USERS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {}
+    return [];
+  });
   const [activeSessions, setActiveSessions] = useState<any[]>([]);
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
   const [driveAccessToken, setDriveAccessToken] = useState<string | null>(() => getCachedAccessToken());
@@ -187,6 +197,17 @@ export default function App() {
       console.warn("Could not persist appData to localStorage cache:", e);
     }
   }, [appData]);
+
+  // Persist allowedUsers changes to localStorage
+  useEffect(() => {
+    try {
+      if (allowedUsers.length > 0) {
+        localStorage.setItem(ALLOWED_USERS_KEY, JSON.stringify(allowedUsers));
+      }
+    } catch (e) {
+      console.warn("Could not persist allowedUsers to localStorage:", e);
+    }
+  }, [allowedUsers]);
 
   const [showSplash, setShowSplash] = useState(true);
   const { resolvedLogo } = useActiveResponsiveLogo(appData);
@@ -282,8 +303,38 @@ export default function App() {
           snapshot = await getDoc(doc(db, 'allowedUsers', email));
         }
 
-        if (snapshot.exists() && snapshot.data()?.status === 'ACTIVE') {
-          const schema = snapshot.data() as AllowedUser;
+        // Collection query fallback in case doc ID differs from normalized email
+        if (!snapshot.exists()) {
+          try {
+            const allUsersSnap = await getDocs(collection(db, 'allowedUsers'));
+            const matchingDoc = allUsersSnap.docs.find(d => {
+              const dEmail = (d.data().email || d.id || '').toLowerCase().trim();
+              return dEmail === emailLower;
+            });
+            if (matchingDoc) {
+              snapshot = matchingDoc as any;
+            }
+          } catch (e) {
+            console.warn("Could not query all allowedUsers:", e);
+          }
+        }
+
+        let schema: AllowedUser | null = null;
+        if (snapshot.exists()) {
+          schema = snapshot.data() as AllowedUser;
+        } else {
+          // Check local cached allowedUsers as an offline/lag fallback
+          const localUser = allowedUsers.find(u => u.email.toLowerCase().trim() === emailLower);
+          if (localUser) {
+            schema = localUser;
+            // Also write to cloud Firestore so it is stored remotely
+            setDoc(doc(db, 'allowedUsers', emailLower), cleanUndefined(localUser), { merge: true }).catch(console.warn);
+          }
+        }
+
+        const isUserActive = schema && (schema.status || 'ACTIVE').toUpperCase() === 'ACTIVE';
+
+        if (schema && isUserActive) {
           const dName = firebaseUser.displayName || schema.role || 'Authorized Helper';
           setUser({
             uid: firebaseUser.uid,
@@ -347,10 +398,10 @@ export default function App() {
 
           setAppData(prev => ({
             ...prev,
-            transactions: transactionsSnap.docs.map(item => ({ id: item.id, ...item.data() } as Transaction)),
-            sponsors: sponsorsSnap.docs.map(item => ({ id: item.id, ...item.data() } as Sponsor)),
-            incomeExpenses: incomeExpensesSnap.docs.map(item => ({ id: item.id, ...item.data() } as IncomeExpense)),
-            secretaryHandovers: handoversSnap.docs.map(item => ({ id: item.id, ...item.data() } as SecretaryHandover)),
+            transactions: transactionsSnap.empty && prev.transactions.length > 0 ? prev.transactions : transactionsSnap.docs.map(item => ({ id: item.id, ...item.data() } as Transaction)),
+            sponsors: sponsorsSnap.empty && prev.sponsors.length > 0 ? prev.sponsors : sponsorsSnap.docs.map(item => ({ id: item.id, ...item.data() } as Sponsor)),
+            incomeExpenses: incomeExpensesSnap.empty && prev.incomeExpenses.length > 0 ? prev.incomeExpenses : incomeExpensesSnap.docs.map(item => ({ id: item.id, ...item.data() } as IncomeExpense)),
+            secretaryHandovers: handoversSnap.empty && prev.secretaryHandovers.length > 0 ? prev.secretaryHandovers : handoversSnap.docs.map(item => ({ id: item.id, ...item.data() } as SecretaryHandover)),
           }));
           clearErrorOnSuccess();
         } catch (error) {
@@ -364,7 +415,7 @@ export default function App() {
       let isInitialIncomeExpenses = true;
       let isInitialHandovers = true;
 
-      // 1. Transactions Listener
+      // 1. Transactions Listener (Real-time sync across all devices)
       const unsubTransactions = onSnapshot(collection(db, 'transactions'), (snap) => {
         const list: Transaction[] = [];
         snap.forEach(doc => {
@@ -387,7 +438,16 @@ export default function App() {
         }
         isInitialTransactions = false;
 
-        setAppData(prev => ({ ...prev, transactions: list }));
+        setAppData(prev => {
+          // If Cloud Firestore is empty but client has local transactions, push them to the cloud so all other devices get them
+          if (list.length === 0 && prev.transactions.length > 0 && isAdmin) {
+            prev.transactions.forEach(t => {
+              setDoc(doc(db, 'transactions', t.id), cleanUndefined(t), { merge: true }).catch(console.warn);
+            });
+            return prev;
+          }
+          return { ...prev, transactions: list };
+        });
         clearErrorOnSuccess();
       }, (err) => {
         handleSyncError("Transactions", err);
@@ -416,7 +476,15 @@ export default function App() {
         }
         isInitialSponsors = false;
 
-        setAppData(prev => ({ ...prev, sponsors: list }));
+        setAppData(prev => {
+          if (list.length === 0 && prev.sponsors.length > 0 && isAdmin) {
+            prev.sponsors.forEach(s => {
+              setDoc(doc(db, 'sponsors', s.id), cleanUndefined(s), { merge: true }).catch(console.warn);
+            });
+            return prev;
+          }
+          return { ...prev, sponsors: list };
+        });
         clearErrorOnSuccess();
       }, (err) => {
         handleSyncError("Sponsors", err);
@@ -447,7 +515,15 @@ export default function App() {
         }
         isInitialIncomeExpenses = false;
 
-        setAppData(prev => ({ ...prev, incomeExpenses: list }));
+        setAppData(prev => {
+          if (list.length === 0 && prev.incomeExpenses.length > 0 && isAdmin) {
+            prev.incomeExpenses.forEach(ie => {
+              setDoc(doc(db, 'incomeExpenses', ie.id), cleanUndefined(ie), { merge: true }).catch(console.warn);
+            });
+            return prev;
+          }
+          return { ...prev, incomeExpenses: list };
+        });
         clearErrorOnSuccess();
       }, (err) => {
         handleSyncError("Income/Expenses", err);
@@ -476,7 +552,15 @@ export default function App() {
         }
         isInitialHandovers = false;
 
-        setAppData(prev => ({ ...prev, secretaryHandovers: list }));
+        setAppData(prev => {
+          if (list.length === 0 && prev.secretaryHandovers.length > 0 && isAdmin) {
+            prev.secretaryHandovers.forEach(sh => {
+              setDoc(doc(db, 'secretaryHandovers', sh.id), cleanUndefined(sh), { merge: true }).catch(console.warn);
+            });
+            return prev;
+          }
+          return { ...prev, secretaryHandovers: list };
+        });
         clearErrorOnSuccess();
       }, (err) => {
         handleSyncError("Handovers", err);
@@ -487,10 +571,27 @@ export default function App() {
       const currentUserEmail = auth.currentUser?.email?.toLowerCase().trim() || '';
       if (isAdmin) {
         const unsubAllowedUsers = onSnapshot(collection(db, 'allowedUsers'), (snap) => {
-          setAllowedUsers(snap.docs.map(userDoc => ({
-            email: userDoc.id,
-            ...userDoc.data()
-          } as AllowedUser)));
+          if (!snap.empty) {
+            const list = snap.docs.map(userDoc => ({
+              email: userDoc.id,
+              ...userDoc.data()
+            } as AllowedUser));
+            setAllowedUsers(list);
+            try {
+              localStorage.setItem(ALLOWED_USERS_KEY, JSON.stringify(list));
+            } catch (e) {}
+          } else {
+            // Push any locally cached allowed users to Cloud Firestore so newly invited helpers can log in on all devices
+            setAllowedUsers(prev => {
+              if (prev.length > 0) {
+                prev.forEach(u => {
+                  const uid = u.email.toLowerCase().trim();
+                  setDoc(doc(db, 'allowedUsers', uid), cleanUndefined(u), { merge: true }).catch(console.warn);
+                });
+              }
+              return prev;
+            });
+          }
           clearErrorOnSuccess();
         }, (err) => {
           handleSyncError("Allowed Users", err);
@@ -498,14 +599,16 @@ export default function App() {
         activeSubscriptions.push(unsubAllowedUsers);
       } else if (currentUserEmail) {
         const unsubCurrentAllowedUser = onSnapshot(doc(db, 'allowedUsers', currentUserEmail), (snap) => {
-          if (!snap.exists() || snap.data()?.status !== 'ACTIVE') {
+          const schema = snap.exists() ? (snap.data() as AllowedUser) : null;
+          const isUserActive = schema && (schema.status || 'ACTIVE').toUpperCase() === 'ACTIVE';
+          if (!schema || !isUserActive) {
             setLoginError(`Your account is not active in the authorized registry. Please contact ignitina2@gmail.com.`);
             signOut(auth);
             setUser(null);
             return;
           }
 
-          const currentUserDoc = snap.data() as AllowedUser;
+          const currentUserDoc = schema;
           setUserPermissions({
             canAdd: currentUserDoc.canAdd !== false,
             canEdit: currentUserDoc.canEdit !== false,
