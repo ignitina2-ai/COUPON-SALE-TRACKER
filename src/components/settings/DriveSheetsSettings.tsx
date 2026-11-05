@@ -1,22 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  FileSpreadsheet, 
-  FolderSync, 
-  ExternalLink, 
   RefreshCw, 
-  CheckCircle2, 
-  AlertCircle, 
-  Database, 
   Check, 
-  Lock,
-  CloudUpload,
   Copy,
   Code2,
-  Users,
-  ShieldCheck,
-  Zap,
-  Sparkles,
-  RotateCcw
+  Zap
 } from 'lucide-react';
 import { AppData } from '@/types';
 import { cn } from '@/lib/utils';
@@ -27,8 +15,6 @@ import {
   BACKUP_FILE_NAME,
   syncAllTransactionsToSheet,
   saveBackupJsonToDrive,
-  DriveFolderInfo,
-  SheetInfo,
   DriveSyncConfig,
   GOOGLE_APPS_SCRIPT_CODE,
   DEFAULT_WEBHOOK_URL,
@@ -61,7 +47,6 @@ export const DriveSheetsSettings: React.FC<DriveSheetsSettingsProps> = ({
 }) => {
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [copiedEmail, setCopiedEmail] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
   const [showScriptModal, setShowScriptModal] = useState(false);
   const [webhookInput, setWebhookInput] = useState(() => {
@@ -75,8 +60,6 @@ export const DriveSheetsSettings: React.FC<DriveSheetsSettingsProps> = ({
   const [isSavingWebhook, setIsSavingWebhook] = useState(false);
   const [justSavedWebhook, setJustSavedWebhook] = useState(false);
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
-  const [isRestructuring, setIsRestructuring] = useState(false);
-  const [showRestructureModal, setShowRestructureModal] = useState(false);
 
   useEffect(() => {
     if (driveSyncConfig?.webhookUrl) {
@@ -87,54 +70,6 @@ export const DriveSheetsSettings: React.FC<DriveSheetsSettingsProps> = ({
   const activeToken = accessToken || driveSyncConfig?.activeAccessToken;
   const currentWebhookUrl = driveSyncConfig?.webhookUrl || DEFAULT_WEBHOOK_URL;
   const isConnected = !!activeToken || !!currentWebhookUrl;
-
-  const handleRestructureFresh = async () => {
-    if (!activeToken && !currentWebhookUrl) {
-      showNotification('error', 'Please connect with Google Drive & Sheets or save a Webhook URL first.');
-      return;
-    }
-
-    setIsRestructuring(true);
-    try {
-      let sheetRes: any = null;
-      let backupRes: any = null;
-
-      // 1. If direct OAuth token is present, rebuild sheet via Google REST APIs
-      if (activeToken) {
-        sheetRes = await syncAllTransactionsToSheet(activeToken, appData.transactions);
-        backupRes = await saveBackupJsonToDrive(activeToken, appData);
-      }
-
-      // 2. Dispatch restructure to Webhook URL
-      if (currentWebhookUrl) {
-        await syncViaWebhook(currentWebhookUrl, {
-          action: 'restructure',
-          transactions: appData.transactions,
-          fullBackup: appData,
-        });
-      }
-
-      if (onUpdateDriveSyncConfig) {
-        await onUpdateDriveSyncConfig({
-          sheetId: sheetRes?.sheetId || driveSyncConfig?.sheetId,
-          sheetLink: sheetRes?.webViewLink || driveSyncConfig?.sheetLink,
-          backupFileId: backupRes?.fileId || driveSyncConfig?.backupFileId,
-          lastSyncedAt: new Date().toISOString(),
-          lastSyncedBy: user?.email || 'Admin',
-          lastSyncStatus: 'success',
-          lastSyncMessage: `Sheet restructured fresh with ${appData.transactions.length} records & Drive JSON backup saved`,
-        });
-      }
-
-      showNotification('success', `Google Sheet restructured fresh! ${appData.transactions.length} records written with new formatting.`);
-    } catch (err: any) {
-      console.error('Restructure sheet error:', err);
-      showNotification('error', `Restructure failed: ${err.message || 'Please check connection.'}`);
-    } finally {
-      setIsRestructuring(false);
-      setShowRestructureModal(false);
-    }
-  };
 
   const handleManualSyncAll = async () => {
     if (!activeToken && !currentWebhookUrl) {
@@ -265,12 +200,7 @@ export const DriveSheetsSettings: React.FC<DriveSheetsSettingsProps> = ({
     }
   };
 
-  const handleCopyEmail = () => {
-    navigator.clipboard.writeText(TARGET_DRIVE_EMAIL);
-    setCopiedEmail(true);
-    setTimeout(() => setCopiedEmail(false), 2000);
-    showNotification('success', `Copied ${TARGET_DRIVE_EMAIL} to clipboard!`);
-  };
+
 
   const handleCopyScript = () => {
     navigator.clipboard.writeText(GOOGLE_APPS_SCRIPT_CODE);
@@ -282,135 +212,7 @@ export const DriveSheetsSettings: React.FC<DriveSheetsSettingsProps> = ({
   return (
     <div id="settings-card-drive-sheets" className="bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6 text-left font-sans">
       
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-        <div className="flex items-center gap-3.5">
-          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl border border-emerald-100 shrink-0">
-            <FolderSync size={22} />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-900 leading-tight">Google Drive & Google Sheets Live Sync</h3>
-            <p className="text-xs text-slate-500 font-normal mt-0.5">
-              Auto-records each transaction in &quot;{SHEET_NAME}&quot; sheet &amp; updates JSON backup in &quot;{FOLDER_NAME}&quot;
-            </p>
-          </div>
-        </div>
 
-        {/* Connection Action */}
-        <div className="flex items-center gap-2 self-start sm:self-center">
-          {isConnected ? (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200/70 text-emerald-700 text-xs font-bold">
-                <CheckCircle2 size={14} className="text-emerald-600" />
-                <span>Drive &amp; Sheets Live</span>
-              </div>
-              <button
-                onClick={onConnectDrive}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                title="Re-authenticate or update Drive token"
-              >
-                Refresh Token
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={onConnectDrive}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
-            >
-              <CloudUpload size={14} />
-              <span>Connect Drive &amp; Sheets</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Team Sync Notice Banner */}
-      <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-4 flex items-start gap-3">
-        <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl shrink-0 mt-0.5">
-          <Users size={16} />
-        </div>
-        <div className="space-y-1">
-          <h4 className="text-xs font-black text-indigo-900 uppercase tracking-wider">
-            Trust Admin Team Multi-User Sync Active
-          </h4>
-          <p className="text-xs text-indigo-800 leading-relaxed">
-            Trust Admin Team വഴി അനുവാദം ലഭിച്ച ഏതൊരു ID വഴി ലോഗിൻ ചെയ്ത് ആര് പുതിയ transaction ചേർത്താലും അല്ലെങ്കിൽ മാറ്റം വരുത്തിയാലും, അത് തനിയെ <strong>ignitina2@gmail.com</strong> ഡ്രൈവിലെ <strong>{SHEET_NAME}</strong> ഗൂഗിൾ ഷീറ്റിലും <strong>{FOLDER_NAME}</strong> ഫോൾഡറിലെ JSON ബാക്കപ്പിലും ഒരേസമയം തത്സമയം സേവ് ആകും!
-          </p>
-        </div>
-      </div>
-
-      {/* Target Drive & Folder Information Box */}
-      <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/60 space-y-3.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span className="font-semibold text-slate-600">Target Google Account:</span>
-          <div className="flex items-center gap-2">
-            <span className="font-mono font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-lg border border-blue-100">
-              {TARGET_DRIVE_EMAIL}
-            </span>
-            <button
-              onClick={handleCopyEmail}
-              className="p-1 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
-              title="Copy Email"
-            >
-              {copiedEmail ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Folder, Sheet, and File Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-          {/* Target Folder */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200/60 space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Drive Folder</span>
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="text-xs font-extrabold text-slate-800 truncate" title={FOLDER_NAME}>
-                📁 {FOLDER_NAME}
-              </span>
-              <a
-                href={driveSyncConfig?.folderLink || `https://drive.google.com/drive/search?q=${encodeURIComponent(FOLDER_NAME)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-600 hover:text-blue-700 p-1 hover:bg-blue-50 rounded transition-colors"
-                title="Open Folder in Google Drive"
-              >
-                <ExternalLink size={13} />
-              </a>
-            </div>
-          </div>
-
-          {/* Target Sheet */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200/60 space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Google Spreadsheet</span>
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="text-xs font-extrabold text-emerald-800 truncate" title={SHEET_NAME}>
-                📊 {SHEET_NAME}
-              </span>
-              <a
-                href={driveSyncConfig?.sheetLink || `https://docs.google.com/spreadsheets/u/0/`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-emerald-600 hover:text-emerald-700 p-1 hover:bg-emerald-50 rounded transition-colors"
-                title="Open Sheet in Google Sheets"
-              >
-                <ExternalLink size={13} />
-              </a>
-            </div>
-          </div>
-
-          {/* Target Backup File */}
-          <div className="bg-white p-3 rounded-xl border border-slate-200/60 space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Drive JSON Backup</span>
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="text-xs font-extrabold text-amber-800 truncate" title={BACKUP_FILE_NAME}>
-                💾 {BACKUP_FILE_NAME}
-              </span>
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                Live
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
 
       {/* Auto-Sync Toggle Control */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-white rounded-2xl border border-slate-100 shadow-xs">
@@ -505,41 +307,6 @@ export const DriveSheetsSettings: React.FC<DriveSheetsSettingsProps> = ({
           </button>
         </div>
 
-        <div className="p-3 bg-amber-50/80 border border-amber-200/80 rounded-xl space-y-1">
-          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900">
-            <AlertCircle size={14} className="text-amber-600 shrink-0" />
-            <span>പ്രധാനപ്പെട്ട ഡിപ്ലോയ്മെന്റ് സെറ്റിംഗ് (Zero Saving Delay):</span>
-          </div>
-          <p className="text-[11px] text-amber-800 leading-relaxed">
-            Google Apps Script &gt; <strong>Deploy</strong> &gt; <strong>Manage deployments</strong> &gt; Edit ചെയ്യുമ്പോൾ <strong>&quot;Who has access&quot;</strong> എന്നത് നിർബന്ധമായും <strong>&quot;Anyone&quot; (ഏവർക്കും / ആർക്കും)</strong> എന്ന് സെറ്റ് ചെയ്യുക. &quot;Only myself&quot; എന്ന് നൽകിയാൽ Google Login റീഡയറക്റ്റ് കാരണം സേവിംഗിൽ delay അനുഭവപ്പെടാം.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 text-[11px] text-emerald-700 bg-emerald-50/80 border border-emerald-200/60 p-2.5 rounded-xl">
-          <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
-          <span>Active Webhook Configured: ലോഗിൻ ചെയ്ത എല്ലാ ടീം അംഗങ്ങൾക്കും Google Sheet &amp; Drive JSON ബാക്കപ്പ് തത്സമയം അപ്ഡേറ്റ് ആകും!</span>
-        </div>
-      </div>
-
-      {/* Fresh Restructure Card */}
-      <div className="p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-300/60 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-1.5 font-bold text-amber-950 text-xs">
-            <Sparkles size={15} className="text-amber-600 shrink-0" />
-            <span>Google Sheet ഫ്രഷ് ആയി റീ-സ്ട്രക്ചർ ചെയ്യണോ? (Fresh Restructure &amp; Reset)</span>
-          </div>
-          <p className="text-[11px] text-amber-900/90 leading-relaxed">
-            പഴയ ഷീറ്റ് ക്ലീൻ ചെയ്ത്, പുതിയ ഡാർക്ക് ഹെഡറുകളോടെ നിലവിലുള്ള <strong>{appData.transactions.length}</strong> ഇടപാടുകളും പുത്തനായി റീ-ബിൽഡ് ചെയ്യാം.
-          </p>
-        </div>
-        <button
-          onClick={() => setShowRestructureModal(true)}
-          disabled={isRestructuring || !isConnected}
-          className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer disabled:opacity-50 shrink-0 flex items-center gap-1.5"
-        >
-          <RotateCcw size={13} className={isRestructuring ? "animate-spin" : ""} />
-          <span>{isRestructuring ? "Restructuring..." : "Re-structure Sheet Fresh"}</span>
-        </button>
       </div>
 
       {/* Manual Bulk Sync Action */}
@@ -562,18 +329,6 @@ export const DriveSheetsSettings: React.FC<DriveSheetsSettingsProps> = ({
           <span>{isSyncingAll ? "Syncing to Drive & Sheets..." : "Sync All to Google Sheet & Drive"}</span>
         </button>
       </div>
-
-      {/* Restructure Confirmation Modal */}
-      {showRestructureModal && (
-        <ConfirmationModal
-          isOpen={showRestructureModal}
-          onClose={() => setShowRestructureModal(false)}
-          onConfirm={handleRestructureFresh}
-          title="Google Sheet ഫ്രഷ് ആയി റീ-സ്ട്രക്ചർ ചെയ്യണോ?"
-          message={`ഇത് Google Sheet-ലെ മുഴുവൻ ഡാറ്റയും ക്ലീൻ ചെയ്ത്, പുതിയ ഡാർക്ക് ഹെഡറുകളോടെ നിലവിലുള്ള ${appData.transactions.length} ട്രാൻസാക്ഷനുകളും ക്രമമായി വീണ്ടും എഴുതും. കൂടാതെ "LUCKY COUPON SALE 2026" ഫോൾഡറിലെ JSON ബാക്കപ്പും പുതുക്കും. തുടരണോ?`}
-          size="sm"
-        />
-      )}
 
       {/* Confirmation Modal */}
       {showConfirmModal && (
