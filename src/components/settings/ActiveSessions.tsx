@@ -75,9 +75,9 @@ export function ActiveSessions({
       const diffHours = Math.floor(diffMins / 60);
 
       if (isNaN(past.getTime())) return 'Unknown time';
-      if (diffMins < 1) return 'ഇപ്പോൾ തന്നെ (Just now)';
-      if (diffMins < 60) return `${diffMins} മിനിറ്റ് മുമ്പ് (${diffMins}m ago)`;
-      if (diffHours < 24) return `${diffHours} മണിക്കൂർ മുമ്പ് (${diffHours}h ago)`;
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
       return past.toLocaleString('en-IN', {
         day: 'numeric',
         month: 'short',
@@ -94,10 +94,10 @@ export function ActiveSessions({
     setTerminatingId(sessionId);
     try {
       await deleteDoc(doc(db, 'activeSessions', sessionId));
-      showNotification('success', `ലോഗിൻ സെഷൻ വിജയകരമായി നിർത്തി! Terminated session for ${sessionEmail}.`);
+      showNotification('success', `Terminated session for ${sessionEmail}.`);
     } catch (err) {
       console.error('Failed to terminate session:', err);
-      showNotification('error', 'സെഷൻ ഒഴിവാക്കാൻ സാധിച്ചില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.');
+      showNotification('error', 'Failed to terminate session. Please try again.');
     } finally {
       setTerminatingId(null);
     }
@@ -116,10 +116,10 @@ export function ActiveSessions({
           </div>
           <div>
             <h3 className="text-sm font-black text-slate-900 tracking-tight uppercase leading-tight">
-              ലോഗിൻ ചെയ്തവർ <span className="text-xs font-bold text-slate-400"></span>
+              Active Device Sessions
             </h3>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-              നിങ്ങൾ ലോഗിൻ ചെയ്തിട്ടുള്ള മൊബൈലുകളും പിസികളും / Devices logged in
+              Currently signed in devices and active team sessions
             </p>
           </div>
         </div>
@@ -242,7 +242,7 @@ export function ActiveSessions({
                       <div className="flex flex-row md:flex-col items-start md:items-end justify-between md:justify-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 md:border-none">
                         <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
                           <Clock size={11} className="text-slate-400" />
-                          <span>ആക്റ്റീവ്: {getRelativeTime(session.lastActive)}</span>
+                          <span>Active: {getRelativeTime(session.lastActive)}</span>
                         </div>
 
                         {!isCurrentSession && (
@@ -250,14 +250,14 @@ export function ActiveSessions({
                             onClick={() => handleTerminateSession(session.id, session.email)}
                             disabled={terminatingId === session.id}
                             className="text-[10px] font-black uppercase tracking-wide bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl transition-all flex items-center gap-1 active:scale-95 disabled:opacity-50 cursor-pointer self-end shrink-0"
-                            title="ലോഗൗട്ട് ചെയ്യിക്കുക"
+                            title="Log Out Session"
                           >
                             {terminatingId === session.id ? (
                               <RefreshCw size={11} className="animate-spin" />
                             ) : (
                               <Trash2 size={11} />
                             )}
-                            <span>ലോഗൗട്ട് ചെയ്യിക്കുക (Kick)</span>
+                            <span>Logout Session</span>
                           </button>
                         )}
                       </div>

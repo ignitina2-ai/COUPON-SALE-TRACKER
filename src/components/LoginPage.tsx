@@ -134,7 +134,7 @@ export default function LoginPage({
                 <div>
                   <p className="text-xs font-black text-amber-300 uppercase">Google Error 403: Add to Test Users</p>
                   <p className="text-[10px] text-amber-200/90 leading-relaxed mt-0.5">
-                    ആപ്പ് Google Cloud-ൽ Testing മോഡിലാണ്. ഇതിൽ ലോഗിൻ ചെയ്യാൻ <strong className="text-white">stcasimircharitabletrust@gmail.com</strong> ടെസ്റ്റ് യൂസറായി ആഡ് ചെയ്യുക:
+                    The app is currently in Google Cloud Testing mode. To sign in with <strong className="text-white">stcasimircharitabletrust@gmail.com</strong> or helper accounts, add them as test users:
                   </p>
                 </div>
               </div>
@@ -149,7 +149,7 @@ export default function LoginPage({
                   🔗 Open Google Cloud OAuth Consent Screen
                 </a>
                 <p className="text-[9.5px] text-slate-400">
-                  താഴെയുള്ള <strong>Test users</strong> &gt; <strong>+ ADD USERS</strong> ക്ലിക്ക് ചെയ്ത് <code className="bg-slate-800 px-1 py-0.5 rounded text-emerald-400 font-mono">stcasimircharitabletrust@gmail.com</code> നൽകി SAVE ചെയ്യുക. അല്ലെങ്കിൽ നേരിട്ട് <strong className="text-white">ignitina2@gmail.com</strong> വെച്ച് ലോഗിൻ ചെയ്യാം.
+                  Under <strong>Test users</strong>, click <strong>+ ADD USERS</strong>, add the email address and save. Or sign in directly with primary admin <strong className="text-white">ignitina2@gmail.com</strong>.
                 </p>
               </div>
             </div>

@@ -7,12 +7,15 @@ import { storage } from './firebase';
 export async function uploadFile(file: File, path: string): Promise<string> {
   const uploadPromise = (async () => {
     const fileRef = ref(storage, path);
-    const snapshot = await uploadBytes(fileRef, file);
+    const metadata = {
+      contentType: file.type || 'application/octet-stream',
+    };
+    const snapshot = await uploadBytes(fileRef, file, metadata);
     return await getDownloadURL(snapshot.ref);
   })();
 
   const timeoutPromise = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error("Cloud Storage upload timed out after 4 seconds")), 4000)
+    setTimeout(() => reject(new Error("Cloud Storage upload timed out after 15 seconds")), 15000)
   );
 
   try {

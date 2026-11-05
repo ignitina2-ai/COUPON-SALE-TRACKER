@@ -54,7 +54,12 @@ export const db = firestoreDb;
 export async function commitFirestoreWrite(write: Promise<unknown>, path: string): Promise<void> {
   try {
     await write;
-    await waitForPendingWrites(db);
+    // Non-blocking sync wait: wait at most 500ms for server ack, then let background sync proceed
+    // This prevents the UI from freezing or requiring an app refresh
+    await Promise.race([
+      waitForPendingWrites(db),
+      new Promise((resolve) => setTimeout(resolve, 500))
+    ]);
   } catch (error) {
     console.error(`Firestore write failed for ${path}:`, error);
     throw error;

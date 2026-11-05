@@ -142,19 +142,51 @@ export default function App() {
   }, []);
 
   // State model
-  const [appData, setAppData] = useState<AppData>({
-    transactions: [],
-    sponsors: [],
-    incomeExpenses: [],
-    secretaryHandovers: [],
-    logo: '',
-    logoMobile: '',
-    logoDesktop: '',
-    notificationsEnabled: false,
-    creditSettings: DEFAULT_CREDIT_SETTINGS,
-    customPaymentLabels: DEFAULT_PAYMENT_LABELS,
-    paymentMethodsList: getDefaultPaymentMethodsList ? getDefaultPaymentMethodsList() : []
+  const [appData, setAppData] = useState<AppData>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+          sponsors: Array.isArray(parsed.sponsors) ? parsed.sponsors : [],
+          incomeExpenses: Array.isArray(parsed.incomeExpenses) ? parsed.incomeExpenses : [],
+          secretaryHandovers: Array.isArray(parsed.secretaryHandovers) ? parsed.secretaryHandovers : [],
+          logo: parsed.logo || '',
+          logoMobile: parsed.logoMobile || '',
+          logoDesktop: parsed.logoDesktop || '',
+          notificationsEnabled: !!parsed.notificationsEnabled,
+          creditSettings: parsed.creditSettings || DEFAULT_CREDIT_SETTINGS,
+          customPaymentLabels: parsed.customPaymentLabels || DEFAULT_PAYMENT_LABELS,
+          paymentMethodsList: parsed.paymentMethodsList || (getDefaultPaymentMethodsList ? getDefaultPaymentMethodsList() : [])
+        };
+      }
+    } catch (e) {
+      console.warn("Could not load appData from localStorage cache:", e);
+    }
+    return {
+      transactions: [],
+      sponsors: [],
+      incomeExpenses: [],
+      secretaryHandovers: [],
+      logo: '',
+      logoMobile: '',
+      logoDesktop: '',
+      notificationsEnabled: false,
+      creditSettings: DEFAULT_CREDIT_SETTINGS,
+      customPaymentLabels: DEFAULT_PAYMENT_LABELS,
+      paymentMethodsList: getDefaultPaymentMethodsList ? getDefaultPaymentMethodsList() : []
+    };
   });
+
+  // Automatically persist appData changes to localStorage so existing data is NEVER lost during updates or reloads
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    } catch (e) {
+      console.warn("Could not persist appData to localStorage cache:", e);
+    }
+  }, [appData]);
 
   const [showSplash, setShowSplash] = useState(true);
   const { resolvedLogo } = useActiveResponsiveLogo(appData);
@@ -244,8 +276,11 @@ export default function App() {
 
       // Check allowedUsers whitelist registry for helper sub-users
       try {
-        const userDocRef = doc(db, 'allowedUsers', email);
-        const snapshot = await getDoc(userDocRef);
+        const emailLower = email.toLowerCase().trim();
+        let snapshot = await getDoc(doc(db, 'allowedUsers', emailLower));
+        if (!snapshot.exists() && email !== emailLower) {
+          snapshot = await getDoc(doc(db, 'allowedUsers', email));
+        }
 
         if (snapshot.exists() && snapshot.data()?.status === 'ACTIVE') {
           const schema = snapshot.data() as AllowedUser;
@@ -705,21 +740,29 @@ export default function App() {
   const handleAddAllowedUser = async (email: string, role: AllowedUser['role'], perms: { canAdd: boolean; canEdit: boolean; canDelete: boolean }) => {
     const emailId = email.toLowerCase().trim();
     try {
+      const newAllowedUser: AllowedUser = {
+        email: emailId,
+        role,
+        status: 'ACTIVE',
+        canAdd: perms.canAdd,
+        canEdit: perms.canEdit,
+        canDelete: perms.canDelete,
+        addedAt: new Date().toISOString(),
+        addedBy: user?.email || 'ignitina2@gmail.com'
+      };
+
+      // Optimistically update React state immediately so adding subsequent users requires NO app refresh!
+      setAllowedUsers(prev => {
+        const filtered = prev.filter(u => u.email.toLowerCase() !== emailId);
+        return [newAllowedUser, ...filtered];
+      });
+
       await commitFirestoreWrite(
-        setDoc(doc(db, 'allowedUsers', emailId), {
-          email: emailId,
-          role,
-          status: 'ACTIVE',
-          canAdd: perms.canAdd,
-          canEdit: perms.canEdit,
-          canDelete: perms.canDelete,
-          addedAt: new Date().toISOString(),
-          addedBy: user?.email || 'ignitina2@gmail.com'
-        }),
+        setDoc(doc(db, 'allowedUsers', emailId), newAllowedUser, { merge: true }),
         `allowedUsers/${emailId}`
       );
     } catch (err) {
-      console.error(err);
+      console.error("Add user error:", err);
       throw err;
     }
   };
@@ -727,6 +770,7 @@ export default function App() {
   const handleDeleteAllowedUser = async (email: string) => {
     const emailId = email.toLowerCase().trim();
     try {
+      setAllowedUsers(prev => prev.filter(u => u.email.toLowerCase() !== emailId));
       await commitFirestoreWrite(
         deleteDoc(doc(db, 'allowedUsers', emailId)),
         `allowedUsers/${emailId}`
@@ -741,6 +785,7 @@ export default function App() {
     const emailId = email.toLowerCase().trim();
     const nextStatus = currentStatus === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
     try {
+      setAllowedUsers(prev => prev.map(u => u.email.toLowerCase() === emailId ? { ...u, status: nextStatus } : u));
       await commitFirestoreWrite(
         updateDoc(doc(db, 'allowedUsers', emailId), {
           status: nextStatus
@@ -756,6 +801,7 @@ export default function App() {
   const handleUpdateAllowedUserPermission = async (email: string, field: 'canAdd' | 'canEdit' | 'canDelete' | 'canShareReport' | 'hideIncomeExpense' | 'hideSecretaryHandover', value: boolean) => {
     const emailId = email.toLowerCase().trim();
     try {
+      setAllowedUsers(prev => prev.map(u => u.email.toLowerCase() === emailId ? { ...u, [field]: value } : u));
       await commitFirestoreWrite(
         updateDoc(doc(db, 'allowedUsers', emailId), {
           [field]: value
@@ -1869,14 +1915,14 @@ export default function App() {
                 </div>
                 <div className="space-y-1.5">
                   <h3 className="text-sm font-black text-amber-950 uppercase tracking-wider flex items-center gap-2">
-                    Firebase Sync Issue <span className="text-[10px] text-amber-700 font-bold lowercase tracking-normal bg-amber-100 px-2 py-0.5 rounded-full">(ഡാറ്റ സിങ്ക് ചെയ്യുന്നില്ല)</span>
+                    Firebase Sync Notice <span className="text-[10px] text-amber-700 font-bold uppercase tracking-normal bg-amber-100 px-2 py-0.5 rounded-full">Offline Buffering Active</span>
                   </h3>
                   <div className="text-xs font-semibold leading-relaxed text-slate-700 space-y-2">
                     <p>
-                      The app is currently having trouble talking to the cloud database. We have successfully configured your Firestore Database for project <strong className="text-slate-900 font-black">coupon-sale-tracker</strong> and deployed the security rules.
+                      The app is currently reconnecting to the cloud database. We have successfully configured your Firestore Database for project <strong className="text-slate-900 font-black">coupon-sale-tracker</strong> and deployed security rules.
                     </p>
                     <p className="text-amber-800 font-bold">
-                      ഇത് പരിഹരിക്കാൻ: 1) ഫയർബേസ് കൺസോളിൽ ഫയർസ്റ്റോർ പൂർണ്ണമായി എനേബിൾ ആണെന്ന് ഉറപ്പാക്കുക. 2) താഴെയുള്ള "Reload Connections" ബട്ടൺ ക്ലിക്ക് ചെയ്യുക.
+                      To troubleshoot: 1) Verify that Firestore is active in the Firebase Console. 2) Click the &quot;Reload Connections&quot; button below.
                     </p>
                     <div className="mt-2 bg-white/70 border border-amber-100 rounded-xl p-3">
                       <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Detailed Technical Error Code:</span>

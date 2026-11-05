@@ -217,7 +217,7 @@ export function AdminSettings({
               className="w-full h-8.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-black tracking-wide flex items-center justify-center gap-1 shadow-md shadow-blue-500/5 cursor-pointer transition-all active:scale-95 disabled:opacity-50"
             >
               <Plus size={12} />
-              <span>USER</span>
+              <span>{isAdding ? 'ADDING...' : 'ADD USER'}</span>
             </button>
           </div>
         </form>
