@@ -55,7 +55,7 @@ function sendBackgroundNotification(title, body) {
   });
 }
 
-const CACHE_NAME = 'coupon-sale-assets-v2';
+const CACHE_NAME = 'coupon-sale-assets-v3';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

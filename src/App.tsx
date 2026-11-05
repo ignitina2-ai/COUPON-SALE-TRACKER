@@ -43,6 +43,7 @@ import {
   googleProvider, 
   OperationType, 
   handleFirestoreError,
+  commitFirestoreWrite,
   setCachedAccessToken,
   getCachedAccessToken
 } from './lib/firebase';
@@ -56,6 +57,7 @@ import {
   onSnapshot, 
   getDoc,
   getDocs,
+  getDocsFromServer,
   getDocFromServer,
   writeBatch
 } from 'firebase/firestore';
@@ -292,6 +294,29 @@ export default function App() {
         setFirestoreError(null);
       };
 
+      const refreshCollectionsFromServer = async () => {
+        try {
+          const [transactionsSnap, sponsorsSnap, incomeExpensesSnap, handoversSnap] = await Promise.all([
+            getDocsFromServer(collection(db, 'transactions')),
+            getDocsFromServer(collection(db, 'sponsors')),
+            getDocsFromServer(collection(db, 'incomeExpenses')),
+            getDocsFromServer(collection(db, 'secretaryHandovers')),
+          ]);
+
+          setAppData(prev => ({
+            ...prev,
+            transactions: transactionsSnap.docs.map(item => ({ id: item.id, ...item.data() } as Transaction)),
+            sponsors: sponsorsSnap.docs.map(item => ({ id: item.id, ...item.data() } as Sponsor)),
+            incomeExpenses: incomeExpensesSnap.docs.map(item => ({ id: item.id, ...item.data() } as IncomeExpense)),
+            secretaryHandovers: handoversSnap.docs.map(item => ({ id: item.id, ...item.data() } as SecretaryHandover)),
+          }));
+          clearErrorOnSuccess();
+        } catch (error) {
+          console.error('Initial Firestore server refresh failed:', error);
+          setFirestoreError(`Cloud refresh failed: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      };
+
       // Flags to avoid showing notifications for existing cache/server items on initial loading
       let isInitialTransactions = true;
       let isInitialSponsors = true;
@@ -421,53 +446,47 @@ export default function App() {
       });
       activeSubscriptions.push(unsubHandovers);
 
-      // 5. Whitelisted Users Admin Listener
-      const unsubAllowedUsers = onSnapshot(collection(db, 'allowedUsers'), (snap) => {
-        const list: AllowedUser[] = [];
-        const curUserEmail = auth.currentUser ? auth.currentUser.email?.toLowerCase().trim() : '';
-        let currentUserFound = false;
-        let currentUserDoc: AllowedUser | null = null;
-
-        snap.forEach(doc => {
-          const u = { email: doc.id, ...doc.data() } as any;
-          list.push(u);
-          if (u.email?.toLowerCase().trim() === curUserEmail) {
-            currentUserFound = true;
-            currentUserDoc = u;
-          }
+      // 5. Whitelisted Users Listener
+      const currentUserEmail = auth.currentUser?.email?.toLowerCase().trim() || '';
+      if (isAdmin) {
+        const unsubAllowedUsers = onSnapshot(collection(db, 'allowedUsers'), (snap) => {
+          setAllowedUsers(snap.docs.map(userDoc => ({
+            email: userDoc.id,
+            ...userDoc.data()
+          } as AllowedUser)));
+          clearErrorOnSuccess();
+        }, (err) => {
+          console.error("AllowedUsers sync error:", err);
+          setFirestoreError(`Allowed Users: ${err.message || String(err)}`);
         });
-        setAllowedUsers(list);
-
-        // Dynamically update logged in helper sub-user permissions if modified in real-time
-        if (curUserEmail && !isPrimaryAdminEmail(curUserEmail)) {
-          if (currentUserFound && currentUserDoc) {
-            if (currentUserDoc.status === 'ACTIVE') {
-              setUserPermissions({
-                canAdd: currentUserDoc.canAdd !== false,
-                canEdit: currentUserDoc.canEdit !== false,
-                canDelete: currentUserDoc.canDelete === true,
-                canShareReport: currentUserDoc.canShareReport !== false,
-                hideIncomeExpense: !!currentUserDoc.hideIncomeExpense,
-                hideSecretaryHandover: !!currentUserDoc.hideSecretaryHandover,
-              });
-            } else {
-              setLoginError(`Your assistant account status has been changed to DISABLED. Please contact ignitina2@gmail.com to restore access.`);
-              signOut(auth);
-              setUser(null);
-            }
-          } else {
-            setLoginError(`Your account has been removed from the authorized whitelist registry. Please contact ignitina2@gmail.com.`);
+        activeSubscriptions.push(unsubAllowedUsers);
+      } else if (currentUserEmail) {
+        const unsubCurrentAllowedUser = onSnapshot(doc(db, 'allowedUsers', currentUserEmail), (snap) => {
+          if (!snap.exists() || snap.data()?.status !== 'ACTIVE') {
+            setLoginError(`Your account is not active in the authorized registry. Please contact ignitina2@gmail.com.`);
             signOut(auth);
             setUser(null);
+            return;
           }
-        }
 
-        clearErrorOnSuccess();
-      }, (err) => {
-        console.error("AllowedUsers sync error:", err);
-        setFirestoreError(`Allowed Users: ${err.message || String(err)}`);
-      });
-      activeSubscriptions.push(unsubAllowedUsers);
+          const currentUserDoc = snap.data() as AllowedUser;
+          setUserPermissions({
+            canAdd: currentUserDoc.canAdd !== false,
+            canEdit: currentUserDoc.canEdit !== false,
+            canDelete: currentUserDoc.canDelete === true,
+            canShareReport: currentUserDoc.canShareReport !== false,
+            hideIncomeExpense: !!currentUserDoc.hideIncomeExpense,
+            hideSecretaryHandover: !!currentUserDoc.hideSecretaryHandover,
+          });
+          clearErrorOnSuccess();
+        }, (err) => {
+          console.error("Current allowed user sync error:", err);
+          setFirestoreError(`User permissions sync: ${err.message || String(err)}`);
+        });
+        activeSubscriptions.push(unsubCurrentAllowedUser);
+      }
+
+      void refreshCollectionsFromServer();
 
       // 5.5 Active Sessions Listener
       const unsubActiveSessions = onSnapshot(collection(db, 'activeSessions'), (snap) => {
@@ -564,12 +583,21 @@ export default function App() {
       // This allows ANY permitted team member or admin to sign in without being blocked by Error 403 (unverified app / test user).
       await signInWithPopup(auth, authGoogleProvider);
     } catch (err: any) {
+      console.error('Google sign-in failed:', err);
       if (err.code === 'auth/popup-closed-by-user') {
         // quiet
+      } else if (err.code === 'auth/popup-blocked') {
+        setLoginError('Google sign-in popup was blocked. Allow popups for this site and try again.');
       } else if (err.code === 'auth/unauthorized-domain' || (err.message && err.message.includes('unauthorized-domain'))) {
-        setLoginError("Firebase: Error (auth/unauthorized-domain)");
+        setLoginError(`Firebase: Error (auth/unauthorized-domain). Add "${window.location.hostname}" under Firebase Console > Authentication > Settings > Authorized domains.`);
+      } else if (err.code === 'auth/operation-not-allowed') {
+        setLoginError('Google sign-in is disabled. Enable the Google provider under Firebase Console > Authentication > Sign-in method.');
+      } else if (err.code === 'auth/account-exists-with-different-credential') {
+        setLoginError('This email is already linked to another sign-in method in Firebase.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setLoginError('Network request failed while contacting Firebase. Check your connection and try again.');
       } else {
-        setLoginError(err.message || 'Verification failure.');
+        setLoginError(`Google sign-in failed${err.code ? ` (${err.code})` : ''}: ${err.message || 'Unknown Firebase error.'}`);
       }
     } finally {
       setIsLoggingIn(false);
@@ -679,16 +707,19 @@ export default function App() {
   const handleAddAllowedUser = async (email: string, role: AllowedUser['role'], perms: { canAdd: boolean; canEdit: boolean; canDelete: boolean }) => {
     const emailId = email.toLowerCase().trim();
     try {
-      await setDoc(doc(db, 'allowedUsers', emailId), {
-        email: emailId,
-        role,
-        status: 'ACTIVE',
-        canAdd: perms.canAdd,
-        canEdit: perms.canEdit,
-        canDelete: perms.canDelete,
-        addedAt: new Date().toISOString(),
-        addedBy: user?.email || 'ignitina2@gmail.com'
-      });
+      await commitFirestoreWrite(
+        setDoc(doc(db, 'allowedUsers', emailId), {
+          email: emailId,
+          role,
+          status: 'ACTIVE',
+          canAdd: perms.canAdd,
+          canEdit: perms.canEdit,
+          canDelete: perms.canDelete,
+          addedAt: new Date().toISOString(),
+          addedBy: user?.email || 'ignitina2@gmail.com'
+        }),
+        `allowedUsers/${emailId}`
+      );
     } catch (err) {
       console.error(err);
       throw err;
@@ -698,7 +729,10 @@ export default function App() {
   const handleDeleteAllowedUser = async (email: string) => {
     const emailId = email.toLowerCase().trim();
     try {
-      await deleteDoc(doc(db, 'allowedUsers', emailId));
+      await commitFirestoreWrite(
+        deleteDoc(doc(db, 'allowedUsers', emailId)),
+        `allowedUsers/${emailId}`
+      );
     } catch (err) {
       console.error(err);
       throw err;
@@ -709,9 +743,12 @@ export default function App() {
     const emailId = email.toLowerCase().trim();
     const nextStatus = currentStatus === 'ACTIVE' ? 'DISABLED' : 'ACTIVE';
     try {
-      await updateDoc(doc(db, 'allowedUsers', emailId), {
-        status: nextStatus
-      });
+      await commitFirestoreWrite(
+        updateDoc(doc(db, 'allowedUsers', emailId), {
+          status: nextStatus
+        }),
+        `allowedUsers/${emailId}`
+      );
     } catch (err) {
       console.error(err);
       throw err;
@@ -721,9 +758,12 @@ export default function App() {
   const handleUpdateAllowedUserPermission = async (email: string, field: 'canAdd' | 'canEdit' | 'canDelete' | 'canShareReport' | 'hideIncomeExpense' | 'hideSecretaryHandover', value: boolean) => {
     const emailId = email.toLowerCase().trim();
     try {
-      await updateDoc(doc(db, 'allowedUsers', emailId), {
-        [field]: value
-      });
+      await commitFirestoreWrite(
+        updateDoc(doc(db, 'allowedUsers', emailId), {
+          [field]: value
+        }),
+        `allowedUsers/${emailId}`
+      );
     } catch (err) {
       console.error(err);
       throw err;
@@ -979,8 +1019,11 @@ export default function App() {
     }
 
     // 2. Background Firestore write
-    setDoc(doc(db, 'transactions', transactionId), cleanUndefined(docData)).catch(err => {
-      console.warn("Firestore transactions write notice:", err);
+    commitFirestoreWrite(
+      setDoc(doc(db, 'transactions', transactionId), cleanUndefined(docData)),
+      `transactions/${transactionId}`
+    ).catch(err => {
+      setFirestoreError(`Transaction sync failed: ${err instanceof Error ? err.message : String(err)}`);
     });
 
     // 3. Background non-blocking Google Drive & Google Sheet sync
@@ -1006,8 +1049,11 @@ export default function App() {
     });
 
     // 2. Background Firestore update
-    updateDoc(doc(db, 'transactions', id), cleanUndefined(updates)).catch(err => {
-      console.warn("Firestore transactions update notice:", err);
+    commitFirestoreWrite(
+      updateDoc(doc(db, 'transactions', id), cleanUndefined(updates)),
+      `transactions/${id}`
+    ).catch(err => {
+      setFirestoreError(`Transaction sync failed: ${err instanceof Error ? err.message : String(err)}`);
     });
 
     // 3. Background Google Drive & Sheet sync
@@ -1031,8 +1077,11 @@ export default function App() {
 
     // 2. Background Firestore delete
     for (const id of ids) {
-      deleteDoc(doc(db, 'transactions', id)).catch(err => {
-        console.warn("Firestore transactions delete notice:", err);
+      commitFirestoreWrite(
+        deleteDoc(doc(db, 'transactions', id)),
+        `transactions/${id}`
+      ).catch(err => {
+        setFirestoreError(`Transaction sync failed: ${err instanceof Error ? err.message : String(err)}`);
       });
     }
 
@@ -1065,11 +1114,14 @@ export default function App() {
     }));
 
     // 2. Background Firestore update
-    updateDoc(doc(db, 'transactions', id), cleanUndefined({
-      paidToTreasurer,
-      treasurerPaidDate
-    })).catch(err => {
-      console.warn("Firestore transactions treasurer notice:", err);
+    commitFirestoreWrite(
+      updateDoc(doc(db, 'transactions', id), cleanUndefined({
+        paidToTreasurer,
+        treasurerPaidDate
+      })),
+      `transactions/${id}`
+    ).catch(err => {
+      setFirestoreError(`Transaction sync failed: ${err instanceof Error ? err.message : String(err)}`);
     });
 
     // 3. Background Google Drive & Sheet sync
@@ -1089,7 +1141,10 @@ export default function App() {
     };
 
     try {
-      await setDoc(doc(db, 'sponsors', sponsorId), cleanUndefined(docData));
+      await commitFirestoreWrite(
+        setDoc(doc(db, 'sponsors', sponsorId), cleanUndefined(docData)),
+        `sponsors/${sponsorId}`
+      );
 
       if (appData.notificationsEnabled) {
         sendNotification('New Sponsor Added', {
@@ -1108,7 +1163,10 @@ export default function App() {
     }
     const oldSponsor = appData.sponsors.find(s => s.id === id);
     try {
-      await updateDoc(doc(db, 'sponsors', id), cleanUndefined(updates));
+      await commitFirestoreWrite(
+        updateDoc(doc(db, 'sponsors', id), cleanUndefined(updates)),
+        `sponsors/${id}`
+      );
 
       if (appData.notificationsEnabled && updates.status === 'COLLECTED' && oldSponsor?.status !== 'COLLECTED') {
         sendNotification('Sponsor Payment Collected', {
@@ -1126,7 +1184,10 @@ export default function App() {
       return;
     }
     try {
-      await deleteDoc(doc(db, 'sponsors', id));
+      await commitFirestoreWrite(
+        deleteDoc(doc(db, 'sponsors', id)),
+        `sponsors/${id}`
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `sponsors/${id}`);
     }
@@ -1144,7 +1205,10 @@ export default function App() {
     };
 
     try {
-      await setDoc(doc(db, 'incomeExpenses', entryId), cleanUndefined(docData));
+      await commitFirestoreWrite(
+        setDoc(doc(db, 'incomeExpenses', entryId), cleanUndefined(docData)),
+        `incomeExpenses/${entryId}`
+      );
 
       if (appData.notificationsEnabled) {
         sendNotification(`New ${docData.type.toLowerCase()} Added`, {
@@ -1162,7 +1226,10 @@ export default function App() {
       return;
     }
     try {
-      await updateDoc(doc(db, 'incomeExpenses', id), cleanUndefined(updates));
+      await commitFirestoreWrite(
+        updateDoc(doc(db, 'incomeExpenses', id), cleanUndefined(updates)),
+        `incomeExpenses/${id}`
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `incomeExpenses/${id}`);
     }
@@ -1175,7 +1242,10 @@ export default function App() {
     }
     try {
       for (const id of ids) {
-        await deleteDoc(doc(db, 'incomeExpenses', id));
+        await commitFirestoreWrite(
+          deleteDoc(doc(db, 'incomeExpenses', id)),
+          `incomeExpenses/${id}`
+        );
       }
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `incomeExpenses/${ids.join(',')}`);
@@ -1194,7 +1264,10 @@ export default function App() {
     };
 
     try {
-      await setDoc(doc(db, 'secretaryHandovers', handoverId), cleanUndefined(docData));
+      await commitFirestoreWrite(
+        setDoc(doc(db, 'secretaryHandovers', handoverId), cleanUndefined(docData)),
+        `secretaryHandovers/${handoverId}`
+      );
 
       if (appData.notificationsEnabled) {
         sendNotification('Cash Handed Over', {
@@ -1212,7 +1285,10 @@ export default function App() {
       return;
     }
     try {
-      await updateDoc(doc(db, 'secretaryHandovers', id), cleanUndefined(updates));
+      await commitFirestoreWrite(
+        updateDoc(doc(db, 'secretaryHandovers', id), cleanUndefined(updates)),
+        `secretaryHandovers/${id}`
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.UPDATE, `secretaryHandovers/${id}`);
     }
@@ -1225,7 +1301,10 @@ export default function App() {
     }
     try {
       for (const id of ids) {
-        await deleteDoc(doc(db, 'secretaryHandovers', id));
+        await commitFirestoreWrite(
+          deleteDoc(doc(db, 'secretaryHandovers', id)),
+          `secretaryHandovers/${id}`
+        );
       }
     } catch (err) {
       handleFirestoreError(err, OperationType.DELETE, `secretaryHandovers/${ids.join(',')}`);
@@ -1234,7 +1313,10 @@ export default function App() {
 
   const updateLogo = async (logo: string) => {
     try {
-      await setDoc(doc(db, 'settings', 'global'), { logo }, { merge: true });
+      await commitFirestoreWrite(
+        setDoc(doc(db, 'settings', 'global'), { logo }, { merge: true }),
+        'settings/global'
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/global');
     }
@@ -1242,7 +1324,10 @@ export default function App() {
 
   const updateLogoMobile = async (logoMobile: string) => {
     try {
-      await setDoc(doc(db, 'settings', 'global'), { logoMobile }, { merge: true });
+      await commitFirestoreWrite(
+        setDoc(doc(db, 'settings', 'global'), { logoMobile }, { merge: true }),
+        'settings/global'
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/global');
     }
@@ -1250,7 +1335,10 @@ export default function App() {
 
   const updateLogoDesktop = async (logoDesktop: string) => {
     try {
-      await setDoc(doc(db, 'settings', 'global'), { logoDesktop }, { merge: true });
+      await commitFirestoreWrite(
+        setDoc(doc(db, 'settings', 'global'), { logoDesktop }, { merge: true }),
+        'settings/global'
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/global');
     }
@@ -1258,7 +1346,10 @@ export default function App() {
 
   const updateCreditSettings = async (settings: CreditSettings) => {
     try {
-      await setDoc(doc(db, 'settings', 'global'), { creditSettings: settings }, { merge: true });
+      await commitFirestoreWrite(
+        setDoc(doc(db, 'settings', 'global'), { creditSettings: settings }, { merge: true }),
+        'settings/global'
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/global');
     }
@@ -1266,7 +1357,10 @@ export default function App() {
 
   const updatePaymentLabels = async (labels: Record<PaymentMethod, string>) => {
     try {
-      await setDoc(doc(db, 'settings', 'global'), { customPaymentLabels: labels }, { merge: true });
+      await commitFirestoreWrite(
+        setDoc(doc(db, 'settings', 'global'), { customPaymentLabels: labels }, { merge: true }),
+        'settings/global'
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/global');
     }
@@ -1274,7 +1368,10 @@ export default function App() {
 
   const updatePaymentMethodsList = async (list: CustomPaymentMethod[]) => {
     try {
-      await setDoc(doc(db, 'settings', 'global'), { paymentMethodsList: list }, { merge: true });
+      await commitFirestoreWrite(
+        setDoc(doc(db, 'settings', 'global'), { paymentMethodsList: list }, { merge: true }),
+        'settings/global'
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/global');
     }
@@ -1282,7 +1379,10 @@ export default function App() {
 
   const toggleNotifications = async (enabled: boolean) => {
     try {
-      await setDoc(doc(db, 'settings', 'global'), { notificationsEnabled: enabled }, { merge: true });
+      await commitFirestoreWrite(
+        setDoc(doc(db, 'settings', 'global'), { notificationsEnabled: enabled }, { merge: true }),
+        'settings/global'
+      );
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/global');
     }

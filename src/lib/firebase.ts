@@ -7,7 +7,8 @@ import {
   doc, 
   getDocFromServer,
   getFirestore,
-  memoryLocalCache
+  memoryLocalCache,
+  waitForPendingWrites
 } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -24,14 +25,14 @@ try {
     localCache: persistentLocalCache({
       tabManager: persistentMultipleTabManager()
     }),
-    experimentalAutoDetectLongPolling: true
+    experimentalForceLongPolling: true
   }, dbId);
 } catch (error) {
   console.warn("Firestore persistent local cache failed to initialize, falling back to memory cache:", error);
   try {
     firestoreDb = initializeFirestore(app, {
       localCache: memoryLocalCache(),
-      experimentalAutoDetectLongPolling: true
+      experimentalForceLongPolling: true
     }, dbId);
   } catch (err2) {
     // If already initialized, fetch the existing instance
@@ -40,6 +41,16 @@ try {
 }
 
 export const db = firestoreDb;
+
+export async function commitFirestoreWrite(write: Promise<unknown>, path: string): Promise<void> {
+  try {
+    await write;
+    await waitForPendingWrites(db);
+  } catch (error) {
+    console.error(`Firestore write failed for ${path}:`, error);
+    throw error;
+  }
+}
 
 // Initialize Authentication and Storage
 export const auth = getAuth(app);

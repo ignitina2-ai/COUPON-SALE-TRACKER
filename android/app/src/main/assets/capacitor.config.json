@@ -1,0 +1,9 @@
+{
+	"appId": "com.coupon_sale_tracker",
+	"appName": "Coupon Sale Tracker",
+	"webDir": "dist",
+	"server": {
+		"url": "https://coupon-sale-tracker.vercel.app",
+		"cleartext": false
+	}
+}
