@@ -43,8 +43,8 @@ function sendBackgroundNotification(title, body) {
     if (!isOpen) {
       self.registration.showNotification(title, {
         body: body,
-        icon: '/splash/mobile.jpg',
-        badge: '/splash/mobile.jpg',
+        icon: '/notification-icon.png',
+        badge: '/notification-badge.png',
         vibrate: [100, 50, 100],
         data: {
           dateOfArrival: Date.now(),
@@ -55,7 +55,7 @@ function sendBackgroundNotification(title, body) {
   });
 }
 
-const CACHE_NAME = 'coupon-sale-assets-v3';
+const CACHE_NAME = 'coupon-sale-assets-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -121,8 +121,8 @@ self.addEventListener('push', (event) => {
   const title = data.title || 'Coupon Sale Alert';
   const options = {
     body: data.body || 'You have a new notification!',
-    icon: '/splash/mobile.jpg',
-    badge: '/splash/mobile.jpg',
+    icon: '/notification-icon.png',
+    badge: '/notification-badge.png',
     vibrate: [100, 50, 100],
     ...data.options
   };

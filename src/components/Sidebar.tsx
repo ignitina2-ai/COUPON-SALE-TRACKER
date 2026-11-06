@@ -13,7 +13,9 @@ import {
   Gift,
   SlidersHorizontal,
   Banknote,
-  LogOut
+  LogOut,
+  Download,
+  CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -66,6 +68,38 @@ const Sidebar: React.FC<SidebarProps> = ({
     return true;
   });
 
+  const [isInstalled, setIsInstalled] = React.useState(false);
+
+  React.useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+    setIsInstalled(!!isStandalone);
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      (window as any).deferredInstallPrompt = null;
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => window.removeEventListener('appinstalled', handleAppInstalled);
+  }, []);
+
+  const handleInstallClick = async () => {
+    const promptEvent = (window as any).deferredInstallPrompt;
+    if (promptEvent) {
+      promptEvent.prompt();
+      const choice = await promptEvent.userChoice;
+      if (choice && choice.outcome === 'accepted') {
+        setIsInstalled(true);
+        (window as any).deferredInstallPrompt = null;
+      }
+    } else {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+      if (isStandalone) {
+        setIsInstalled(true);
+      }
+    }
+  };
+
   return (
     <>
       {/* Mobile Overlay */}
@@ -117,6 +151,37 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {isOpen && <span className="font-medium">{item.label}</span>}
               </button>
             ))}
+
+            {/* Direct 1-Tap Install APK Option in Side Nav (No Instructions) */}
+            <div className="pt-2 border-t border-slate-800/80">
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className={cn(
+                  "w-full flex items-center p-3 rounded-lg transition-all duration-200 cursor-pointer active:scale-95 text-left",
+                  isInstalled 
+                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                    : "bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/30"
+                )}
+                title={isInstalled ? "App Installed on Device (APK Active)" : "Install App as APK"}
+              >
+                {isInstalled ? (
+                  <CheckCircle2 size={24} className={cn(isOpen ? "mr-3 shrink-0 text-emerald-400" : "mx-auto shrink-0 text-emerald-400")} />
+                ) : (
+                  <Download size={24} className={cn(isOpen ? "mr-3 shrink-0 text-white" : "mx-auto shrink-0 text-white")} />
+                )}
+                {isOpen && (
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-sm leading-tight">
+                      {isInstalled ? "APK Installed" : "Install as APK"}
+                    </span>
+                    <span className="text-[10px] text-slate-200 truncate mt-0.5">
+                      {isInstalled ? "Active on Device" : "1-Tap Install"}
+                    </span>
+                  </div>
+                )}
+              </button>
+            </div>
           </nav>
 
           {/* Footer */}
