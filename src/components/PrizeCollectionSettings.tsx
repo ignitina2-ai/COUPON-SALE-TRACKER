@@ -685,7 +685,7 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
           doc.setFont("helvetica", "bold");
           doc.setFontSize(11);
           doc.setTextColor(15, 23, 42);
-          doc.text("Prize Categories Summary Report (വിഭാഗ തിരിച്ചുള്ള സംഗ്രഹം)", 14, 28);
+          doc.text("Prize Categories Summary Report", 14, 28);
 
           doc.setFontSize(8);
           doc.setFont("helvetica", "normal");
@@ -746,7 +746,7 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
           doc.setFont("helvetica", "bold");
           doc.setFontSize(10);
           doc.setTextColor(15, 23, 42);
-          doc.text("1. Trust Purchased Prizes (ട്രസ്റ്റ് നേരിട്ട് വാങ്ങിയവ):", 14, 42);
+          doc.text("1. Trust Purchased Prizes:", 14, 42);
 
           autoTable(doc, {
             head: [['#', 'Prize No', 'Item', 'Sponsor Note', 'Cost Amount']],
@@ -775,7 +775,7 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
           doc.setFont("helvetica", "bold");
           doc.setFontSize(10);
           doc.setTextColor(15, 23, 42);
-          doc.text("2. Received Sponsorship Contributions (ലഭിച്ച സംഭാവനകൾ):", 14, finalY + 12);
+          doc.text("2. Received Sponsorship Contributions:", 14, finalY + 12);
 
           autoTable(doc, {
             head: [['#', 'Donor / Sponsor Name', 'Date', 'Amount']],
@@ -798,13 +798,13 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
           let list = prizes;
 
           if (type === 'collected') {
-            title = "St. Casimir Lucky Draw 2026 — Collected Prizes Report (ലഭിച്ചവ)";
+            title = "St. Casimir Lucky Draw 2026 — Collected Prizes Report";
             list = prizes.filter(p => {
               const s = prizeTracking[p.prize_no]?.status;
               return s === 'SPONSOR' || s === 'TRUST';
             });
           } else if (type === 'pending') {
-            title = "St. Casimir Lucky Draw 2026 — Pending Prizes Report (ലഭിക്കാനുള്ളവ)";
+            title = "St. Casimir Lucky Draw 2026 — Pending Prizes Report ";
             list = prizes.filter(p => {
               const s = prizeTracking[p.prize_no]?.status || 'PENDING';
               return s === 'PENDING';
@@ -875,9 +875,7 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
               Prize Collection Settings & Tools
             </h1>
-            <p className="text-slate-300 text-sm max-w-2xl leading-relaxed">
-              സമ്മാന ശേഖരണ ക്രമീകരണങ്ങൾ: കാറ്റഗറി സംഗ്രഹം, ബാക്കപ്പ്, റീസ്റ്റോർ, പ്രിന്റ് ചെയ്യാനാവുന്ന പി.ഡി.എഫ് റിപ്പോർട്ടുകൾ. നിലവിലെ ഡാറ്റ ഒന്നും നഷ്ടപ്പെടാതെ സുരക്ഷിതമായി മാനേജ് ചെയ്യാം.
-            </p>
+
           </div>
 
           {setActiveTab && (
@@ -900,14 +898,14 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
             <div className="text-[11px] text-slate-300 mt-0.5">111 Official Prizes</div>
           </div>
           <div className="bg-emerald-500/10 backdrop-blur-md p-3.5 rounded-2xl border border-emerald-400/20">
-            <div className="text-emerald-300 text-xs font-semibold">Collected (ലഭിച്ചവ)</div>
+            <div className="text-emerald-300 text-xs font-semibold">Collected</div>
             <div className="text-xl sm:text-2xl font-black text-emerald-300 mt-0.5">
               {stats.collectedCount} <span className="text-xs font-medium text-emerald-200">({stats.percentCollected}%)</span>
             </div>
             <div className="text-[11px] text-emerald-200/80 mt-0.5">{stats.sponsorCount} Sponsor + {stats.trustCount} Trust</div>
           </div>
           <div className="bg-amber-500/10 backdrop-blur-md p-3.5 rounded-2xl border border-amber-400/20">
-            <div className="text-amber-300 text-xs font-semibold">Pending (ലഭിക്കാനുള്ളവ)</div>
+            <div className="text-amber-300 text-xs font-semibold">Pending</div>
             <div className="text-xl sm:text-2xl font-black text-amber-300 mt-0.5">{stats.pendingCount}</div>
             <div className="text-[11px] text-amber-200/80 mt-0.5">Need Sponsorship/Trust</div>
           </div>
@@ -959,9 +957,7 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
                     Live
                   </span>
                 </div>
-                <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
-                  സമ്മാന ശേഖരണ ഡാറ്റാബേസ് തത്സമയം ഗൂഗിൾ ഷീറ്റിലേക്കും ഫയർസ്റ്റോർ ക്ലൗഡിലേക്കും സിങ്ക് ചെയ്യപ്പെടുന്നു.
-                </p>
+                
               </div>
             </div>
 
@@ -1040,7 +1036,7 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
               </div>
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-slate-900">
-                  1. Category Summary (വിഭാഗ തിരിച്ചുള്ള സംഗ്രഹം)
+                  1. Category Summary
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500">
                   Total {categoriesBreakdown.length} unique categories configured across all 111 prizes.
@@ -1256,7 +1252,7 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
               </div>
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-slate-900">
-                  3. Restore Backup (റീസ്റ്റോർ ചെയ്യുക)
+                  3. Restore Backup 
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500">
                   Safely import and verify JSON backups without accidental data loss.
@@ -1356,7 +1352,7 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
               </div>
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-slate-900">
-                  4. Export PDF Reports (പി.ഡി.എഫ് ഡൗൺലോഡ് & പ്രിന്റ്)
+                  4. Export PDF Reports
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500">
                   Generate high-resolution printable PDF documents formatted for committee meetings and festival records.
