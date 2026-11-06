@@ -103,32 +103,88 @@ export function ActiveSessions({
     }
   };
 
-  // Identify our current active tab session
   const currentTabSessionId = sessionStorage.getItem('app_session_id');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isClearingAll, setIsClearingAll] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const handleClearSessions = async (keepCurrent: boolean = true) => {
+    setIsClearingAll(true);
+    try {
+      const sessionsToDelete = keepCurrent
+        ? activeSessions.filter(s => s.id !== currentTabSessionId)
+        : activeSessions;
+
+      if (sessionsToDelete.length === 0) {
+        showNotification('success', 'No additional sessions to clear.');
+        setIsClearingAll(false);
+        setShowClearConfirm(false);
+        return;
+      }
+
+      await Promise.all(
+        sessionsToDelete.map(s => deleteDoc(doc(db, 'activeSessions', s.id)))
+      );
+
+      showNotification('success', `Cleared ${sessionsToDelete.length} active device sessions.`);
+    } catch (err) {
+      console.error('Failed to clear sessions:', err);
+      showNotification('error', 'Failed to clear device sessions. Please try again.');
+    } finally {
+      setIsClearingAll(false);
+      setShowClearConfirm(false);
+    }
+  };
 
   return (
     <div id="settings-card-active-sessions" className="bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6 text-left">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      {/* Interactive Header with Pointer Cursor and Tapping Effect */}
+      <div 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center justify-between gap-3 flex-wrap cursor-pointer select-none -m-2 p-2 rounded-2xl hover:bg-slate-50/80 active:scale-[0.99] transition-all duration-150"
+        title={isExpanded ? "Click to collapse Active Device Sessions" : "Click to view Active Device Sessions"}
+      >
         <div className="flex items-center gap-3">
-          <div className="bg-emerald-50 p-2.5 rounded-2xl text-emerald-600">
+          <div className={cn(
+            "p-2.5 rounded-2xl transition-all duration-200",
+            isExpanded ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/20" : "bg-emerald-50 text-emerald-600"
+          )}>
             <Users size={20} />
           </div>
           <div>
-            <h3 className="text-sm font-black text-slate-900 tracking-tight uppercase leading-tight">
-              Active Device Sessions
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-black text-slate-900 tracking-tight uppercase leading-tight">
+                Active Device Sessions
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+                {activeSessions.length} Online
+              </span>
+            </div>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
               Currently signed in devices and active team sessions
             </p>
           </div>
         </div>
 
-        {/* Toggle Controls */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">
-            {isExpanded ? "Setup open" : "Setup hidden"}
-          </span>
+        {/* Action Controls & Clear Button */}
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {activeSessions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowClearConfirm(true)}
+              disabled={isClearingAll}
+              className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
+              title="Clear active device sessions"
+            >
+              {isClearingAll ? (
+                <RefreshCw size={12} className="animate-spin" />
+              ) : (
+                <Trash2 size={12} className="text-rose-600" />
+              )}
+              <span>Clear Sessions</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
@@ -145,6 +201,61 @@ export function ActiveSessions({
           </button>
         </div>
       </div>
+
+      {/* Clear Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setShowClearConfirm(false)}>
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 shadow-2xl border border-slate-100 text-left" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl">
+                <Trash2 size={24} />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900 tracking-tight">
+                  Clear Device Sessions
+                </h3>
+                <p className="text-xs text-slate-500 font-semibold">
+                  Remove signed-in devices from active sessions
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              ക്ലൗഡ് രജിസ്ട്രിയിൽ രേഖപ്പെടുത്തിയിരിക്കുന്ന ഡിവൈസ് സെഷനുകൾ ക്ലിയർ ചെയ്യണോ? മറ്റ് ഡിവൈസുകൾ വീണ്ടും തുറക്കുമ്പോൾ മാത്രമേ പുതിയ സെഷൻ രജിസ്റ്റർ ആകൂ.
+            </p>
+
+            <div className="space-y-2 pt-2">
+              <button
+                type="button"
+                disabled={isClearingAll}
+                onClick={() => handleClearSessions(true)}
+                className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-600/20 flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                {isClearingAll ? <RefreshCw size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                <span>Clear Other Devices (Keep This Device)</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isClearingAll}
+                onClick={() => handleClearSessions(false)}
+                className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+              >
+                <span>Clear All Sessions (Including This Device)</span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isClearingAll}
+                onClick={() => setShowClearConfirm(false)}
+                className="w-full py-2 px-4 text-slate-500 hover:text-slate-700 text-xs font-semibold text-center cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!isExpanded ? (
         /* Collapsed summary layout to save massive amount of space */
@@ -167,6 +278,37 @@ export function ActiveSessions({
           <p className="text-slate-500 text-xs font-semibold leading-relaxed text-left border-b border-slate-50 pb-4">
             നിങ്ങളുടെ അക്കൗണ്ട് ഉപയോഗിച്ച് ലോഗിൻ ചെയ്തിരിക്കുന്ന എല്ലാ ഡിവൈസുകളും കാണുക, ആവശ്യമില്ലാത്തവ സുരക്ഷിതമായി ഒഴിവാക്കുക.
           </p>
+
+          {/* Quick Clear Toolbar */}
+          {activeSessions.length > 0 && (
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-100 flex-wrap">
+              <span className="text-xs font-black text-slate-700 tracking-tight">
+                Currently Signed In Devices ({activeSessions.length})
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleClearSessions(true)}
+                  disabled={isClearingAll}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                  title="Clear other device sessions"
+                >
+                  <Trash2 size={12} className="text-slate-500" />
+                  <span>Clear Other Devices</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowClearConfirm(true)}
+                  disabled={isClearingAll}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 disabled:opacity-50"
+                  title="Clear all device sessions"
+                >
+                  <Trash2 size={12} className="text-rose-600" />
+                  <span>Clear All</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-4">
             {activeSessions.length === 0 ? (
