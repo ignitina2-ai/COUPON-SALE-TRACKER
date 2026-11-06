@@ -567,8 +567,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 min="0"
-                value={formData.books}
-                onChange={(e: any) => setFormData({ ...formData, books: parseInt(e.target.value) || 0 })}
+                placeholder="0"
+                value={formData.books === 0 ? '' : formData.books}
+                onChange={(e: any) => {
+                  const val = e.target.value;
+                  setFormData({ ...formData, books: val === '' ? 0 : Math.max(0, parseInt(val, 10) || 0) });
+                }}
                 bgClass="bg-white border-blue-400 text-blue-950 focus:ring-blue-600 focus:border-blue-600 font-bold"
                 labelClass="text-blue-950 font-black"
               />
@@ -600,8 +604,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
             inputMode="numeric"
             pattern="[0-9]*"
             min="0"
-            value={formData.coupons}
-            onChange={(e: any) => setFormData({ ...formData, coupons: parseInt(e.target.value) || 0 })}
+            placeholder="0"
+            value={formData.coupons === 0 ? '' : formData.coupons}
+            onChange={(e: any) => {
+              const val = e.target.value;
+              setFormData({ ...formData, coupons: val === '' ? 0 : Math.max(0, parseInt(val, 10) || 0) });
+            }}
           />
 
           <div>

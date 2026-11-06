@@ -217,6 +217,34 @@ export default function App() {
     notificationsEnabledRef.current = appData.notificationsEnabled;
   }, [appData.notificationsEnabled]);
 
+  // Real-time Toast Notifications
+  const [activeToast, setActiveToast] = useState<{ id: number; title: string; body: string; icon?: string } | null>(null);
+
+  useEffect(() => {
+    const handleNotificationEvent = (e: any) => {
+      const { title, body, icon } = e.detail || {};
+      if (title) {
+        setActiveToast({
+          id: Date.now(),
+          title,
+          body: body || '',
+          icon: icon || '/notification-icon.svg',
+        });
+      }
+    };
+    window.addEventListener('app-notification', handleNotificationEvent);
+    return () => window.removeEventListener('app-notification', handleNotificationEvent);
+  }, []);
+
+  useEffect(() => {
+    if (activeToast) {
+      const timer = setTimeout(() => {
+        setActiveToast(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeToast]);
+
   // Synchronize browser favicon and PWA touch icons to the active resolved logo
   useEffect(() => {
     if (resolvedLogo) {
@@ -398,10 +426,10 @@ export default function App() {
 
           setAppData(prev => ({
             ...prev,
-            transactions: transactionsSnap.empty && prev.transactions.length > 0 ? prev.transactions : transactionsSnap.docs.map(item => ({ id: item.id, ...item.data() } as Transaction)),
-            sponsors: sponsorsSnap.empty && prev.sponsors.length > 0 ? prev.sponsors : sponsorsSnap.docs.map(item => ({ id: item.id, ...item.data() } as Sponsor)),
-            incomeExpenses: incomeExpensesSnap.empty && prev.incomeExpenses.length > 0 ? prev.incomeExpenses : incomeExpensesSnap.docs.map(item => ({ id: item.id, ...item.data() } as IncomeExpense)),
-            secretaryHandovers: handoversSnap.empty && prev.secretaryHandovers.length > 0 ? prev.secretaryHandovers : handoversSnap.docs.map(item => ({ id: item.id, ...item.data() } as SecretaryHandover)),
+            transactions: transactionsSnap.docs.map(item => ({ ...item.data(), id: item.id } as Transaction)),
+            sponsors: sponsorsSnap.docs.map(item => ({ ...item.data(), id: item.id } as Sponsor)),
+            incomeExpenses: incomeExpensesSnap.docs.map(item => ({ ...item.data(), id: item.id } as IncomeExpense)),
+            secretaryHandovers: handoversSnap.docs.map(item => ({ ...item.data(), id: item.id } as SecretaryHandover)),
           }));
           clearErrorOnSuccess();
         } catch (error) {
@@ -419,7 +447,7 @@ export default function App() {
       const unsubTransactions = onSnapshot(collection(db, 'transactions'), (snap) => {
         const list: Transaction[] = [];
         snap.forEach(doc => {
-          list.push({ id: doc.id, ...doc.data() } as any);
+          list.push({ ...doc.data(), id: doc.id } as any);
         });
 
         // Trigger remote-addition alerts for real-time multi-device notifications
@@ -436,18 +464,24 @@ export default function App() {
             }
           });
         }
-        isInitialTransactions = false;
 
-        setAppData(prev => {
-          // If Cloud Firestore is empty but client has local transactions, push them to the cloud so all other devices get them
-          if (list.length === 0 && prev.transactions.length > 0 && isAdmin) {
-            prev.transactions.forEach(t => {
-              setDoc(doc(db, 'transactions', t.id), cleanUndefined(t), { merge: true }).catch(console.warn);
-            });
-            return prev;
-          }
-          return { ...prev, transactions: list };
-        });
+        // Only auto-seed if this is the very first connection and Firestore is completely empty
+        if (isInitialTransactions) {
+          isInitialTransactions = false;
+          setAppData(prev => {
+            if (list.length === 0 && prev.transactions.length > 0 && isAdmin) {
+              prev.transactions.forEach(t => {
+                setDoc(doc(db, 'transactions', t.id), cleanUndefined(t), { merge: true }).catch(console.warn);
+              });
+              return prev;
+            }
+            return { ...prev, transactions: list };
+          });
+        } else {
+          // On all subsequent updates (including deletes), Firestore server is the authoritative state
+          setAppData(prev => ({ ...prev, transactions: list }));
+        }
+
         clearErrorOnSuccess();
       }, (err) => {
         handleSyncError("Transactions", err);
@@ -458,7 +492,7 @@ export default function App() {
       const unsubSponsors = onSnapshot(collection(db, 'sponsors'), (snap) => {
         const list: Sponsor[] = [];
         snap.forEach(doc => {
-          list.push({ id: doc.id, ...doc.data() } as any);
+          list.push({ ...doc.data(), id: doc.id } as any);
         });
 
         if (!isInitialSponsors && notificationsEnabledRef.current) {
@@ -474,17 +508,22 @@ export default function App() {
             }
           });
         }
-        isInitialSponsors = false;
 
-        setAppData(prev => {
-          if (list.length === 0 && prev.sponsors.length > 0 && isAdmin) {
-            prev.sponsors.forEach(s => {
-              setDoc(doc(db, 'sponsors', s.id), cleanUndefined(s), { merge: true }).catch(console.warn);
-            });
-            return prev;
-          }
-          return { ...prev, sponsors: list };
-        });
+        if (isInitialSponsors) {
+          isInitialSponsors = false;
+          setAppData(prev => {
+            if (list.length === 0 && prev.sponsors.length > 0 && isAdmin) {
+              prev.sponsors.forEach(s => {
+                setDoc(doc(db, 'sponsors', s.id), cleanUndefined(s), { merge: true }).catch(console.warn);
+              });
+              return prev;
+            }
+            return { ...prev, sponsors: list };
+          });
+        } else {
+          setAppData(prev => ({ ...prev, sponsors: list }));
+        }
+
         clearErrorOnSuccess();
       }, (err) => {
         handleSyncError("Sponsors", err);
@@ -495,7 +534,7 @@ export default function App() {
       const unsubIncomeExpenses = onSnapshot(collection(db, 'incomeExpenses'), (snap) => {
         const list: IncomeExpense[] = [];
         snap.forEach(doc => {
-          list.push({ id: doc.id, ...doc.data() } as any);
+          list.push({ ...doc.data(), id: doc.id } as any);
         });
 
         if (!isInitialIncomeExpenses && notificationsEnabledRef.current) {
@@ -513,17 +552,22 @@ export default function App() {
             }
           });
         }
-        isInitialIncomeExpenses = false;
 
-        setAppData(prev => {
-          if (list.length === 0 && prev.incomeExpenses.length > 0 && isAdmin) {
-            prev.incomeExpenses.forEach(ie => {
-              setDoc(doc(db, 'incomeExpenses', ie.id), cleanUndefined(ie), { merge: true }).catch(console.warn);
-            });
-            return prev;
-          }
-          return { ...prev, incomeExpenses: list };
-        });
+        if (isInitialIncomeExpenses) {
+          isInitialIncomeExpenses = false;
+          setAppData(prev => {
+            if (list.length === 0 && prev.incomeExpenses.length > 0 && isAdmin) {
+              prev.incomeExpenses.forEach(ie => {
+                setDoc(doc(db, 'incomeExpenses', ie.id), cleanUndefined(ie), { merge: true }).catch(console.warn);
+              });
+              return prev;
+            }
+            return { ...prev, incomeExpenses: list };
+          });
+        } else {
+          setAppData(prev => ({ ...prev, incomeExpenses: list }));
+        }
+
         clearErrorOnSuccess();
       }, (err) => {
         handleSyncError("Income/Expenses", err);
@@ -534,7 +578,7 @@ export default function App() {
       const unsubHandovers = onSnapshot(collection(db, 'secretaryHandovers'), (snap) => {
         const list: SecretaryHandover[] = [];
         snap.forEach(doc => {
-          list.push({ id: doc.id, ...doc.data() } as any);
+          list.push({ ...doc.data(), id: doc.id } as any);
         });
 
         if (!isInitialHandovers && notificationsEnabledRef.current) {
@@ -550,17 +594,22 @@ export default function App() {
             }
           });
         }
-        isInitialHandovers = false;
 
-        setAppData(prev => {
-          if (list.length === 0 && prev.secretaryHandovers.length > 0 && isAdmin) {
-            prev.secretaryHandovers.forEach(sh => {
-              setDoc(doc(db, 'secretaryHandovers', sh.id), cleanUndefined(sh), { merge: true }).catch(console.warn);
-            });
-            return prev;
-          }
-          return { ...prev, secretaryHandovers: list };
-        });
+        if (isInitialHandovers) {
+          isInitialHandovers = false;
+          setAppData(prev => {
+            if (list.length === 0 && prev.secretaryHandovers.length > 0 && isAdmin) {
+              prev.secretaryHandovers.forEach(sh => {
+                setDoc(doc(db, 'secretaryHandovers', sh.id), cleanUndefined(sh), { merge: true }).catch(console.warn);
+              });
+              return prev;
+            }
+            return { ...prev, secretaryHandovers: list };
+          });
+        } else {
+          setAppData(prev => ({ ...prev, secretaryHandovers: list }));
+        }
+
         clearErrorOnSuccess();
       }, (err) => {
         handleSyncError("Handovers", err);
@@ -630,7 +679,7 @@ export default function App() {
       const unsubActiveSessions = onSnapshot(collection(db, 'activeSessions'), (snap) => {
         const list: any[] = [];
         snap.forEach(doc => {
-          list.push({ id: doc.id, ...doc.data() });
+          list.push({ ...doc.data(), id: doc.id });
         });
         // Sort sessions by latest active first
         list.sort((a, b) => new Date(b.lastActive || 0).getTime() - new Date(a.lastActive || 0).getTime());
@@ -984,26 +1033,17 @@ export default function App() {
         let incomeExpenses = prev.incomeExpenses;
         let secretaryHandovers = prev.secretaryHandovers;
 
-        if (txSnap && !txSnap.empty) {
-          // Merge server transactions with any existing local transactions
-          const serverList = txSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
-          const map = new Map<string, Transaction>();
-          // Keep server items first
-          serverList.forEach((t: Transaction) => map.set(t.id, t));
-          // Add any local items not on server yet
-          prev.transactions.forEach(t => {
-            if (!map.has(t.id)) map.set(t.id, t);
-          });
-          transactions = Array.from(map.values());
+        if (txSnap) {
+          transactions = txSnap.docs.map(d => ({ ...d.data(), id: d.id } as any));
         }
-        if (spSnap && !spSnap.empty) {
-          sponsors = spSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        if (spSnap) {
+          sponsors = spSnap.docs.map(d => ({ ...d.data(), id: d.id } as any));
         }
-        if (ieSnap && !ieSnap.empty) {
-          incomeExpenses = ieSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        if (ieSnap) {
+          incomeExpenses = ieSnap.docs.map(d => ({ ...d.data(), id: d.id } as any));
         }
-        if (shSnap && !shSnap.empty) {
-          secretaryHandovers = shSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+        if (shSnap) {
+          secretaryHandovers = shSnap.docs.map(d => ({ ...d.data(), id: d.id } as any));
         }
 
         return {
@@ -1212,28 +1252,43 @@ export default function App() {
 
   const deleteTransaction = async (ids: string[]) => {
     if (!userPermissions.canDelete) {
-      setFirestoreError("നിങ്ങൾക്ക് ഡാറ്റ ഇല്ലാതാക്കാൻ (Delete) അനുവാദമില്ല! (You do not have permission to delete Transactions.)");
+      setFirestoreError("You do not have permission to delete Transactions.");
       return;
     }
+    if (!ids || ids.length === 0) return;
 
     // 1. Instant Optimistic UI Update
+    const remainingTx = appData.transactions.filter(t => !ids.includes(t.id));
     setAppData(prev => ({
       ...prev,
       transactions: prev.transactions.filter(t => !ids.includes(t.id))
     }));
 
-    // 2. Background Firestore delete
+    // Update localStorage immediately so deleted items are removed from cache
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        parsed.transactions = remainingTx;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+      }
+    } catch (e) {
+      console.warn("Could not update localStorage on delete:", e);
+    }
+
+    // 2. Direct Cloud Firestore delete
     for (const id of ids) {
-      commitFirestoreWrite(
-        deleteDoc(doc(db, 'transactions', id)),
-        `transactions/${id}`
-      ).catch(err => {
-        setFirestoreError(`Transaction sync failed: ${err instanceof Error ? err.message : String(err)}`);
-      });
+      try {
+        await commitFirestoreWrite(
+          deleteDoc(doc(db, 'transactions', id)),
+          `transactions/${id}`
+        );
+      } catch (err: any) {
+        handleFirestoreError(err, OperationType.DELETE, `transactions/${id}`);
+      }
     }
 
     // 3. Background Google Drive & Sheet sync
-    const remainingTx = appData.transactions.filter(t => !ids.includes(t.id));
     syncTransactionToDriveAndSheet('delete', { id: ids[0] } as any, { ...appData, transactions: remainingTx });
   };
 
@@ -1893,22 +1948,32 @@ export default function App() {
       )}>
         {/* Top Header (Mobile Only) */}
         <div className="md:hidden bg-white border-b border-slate-200 p-3 flex items-center justify-between sticky top-0 z-30 font-sans">
-          <button 
-            onClick={() => setActiveTab('dashboard')}
-            className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left text-slate-950 bg-transparent border-0"
-          >
-            {resolvedLogo ? (
-              <img src={resolvedLogo} alt="Logo" className="w-6 h-6 object-contain" referrerPolicy="no-referrer" />
-            ) : (
-              <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-[10px] shrink-0">C</div>
-            )}
-            <div className="flex flex-col">
-              <span className="font-bold text-slate-900 text-xs tracking-tight uppercase">ST.CASIMIR CHARITABLE TRUST</span>
-              <span className="text-[9px] font-semibold text-blue-600 tracking-wider">SCC TRUST LUCKY COUPON SALE 2026</span>
-            </div>
-          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-1.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-all cursor-pointer shrink-0 active:scale-95"
+              title="Open Navigation Menu"
+              aria-label="Open Navigation Menu"
+            >
+              <Menu size={22} />
+            </button>
+            <button 
+              onClick={() => setActiveTab('dashboard')}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity text-left text-slate-950 bg-transparent border-0 min-w-0"
+            >
+              {resolvedLogo ? (
+                <img src={resolvedLogo} alt="Logo" className="w-6 h-6 object-contain shrink-0" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-white font-bold text-[10px] shrink-0">C</div>
+              )}
+              <div className="flex flex-col min-w-0">
+                <span className="font-bold text-slate-900 text-xs tracking-tight uppercase truncate">ST.CASIMIR CHARITABLE TRUST</span>
+                <span className="text-[9px] font-semibold text-blue-600 tracking-wider truncate">SCC TRUST LUCKY COUPON SALE 2026</span>
+              </div>
+            </button>
+          </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button 
               onClick={handleGoogleLogout}
               className="px-2.5 py-1 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-all flex items-center gap-1 text-[11px] font-bold border border-rose-200 cursor-pointer active:scale-95"
@@ -1916,12 +1981,6 @@ export default function App() {
             >
               <LogOut size={13} />
               <span>Logout</span>
-            </button>
-            <button 
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition-all"
-            >
-              <Menu size={20} />
             </button>
           </div>
         </div>
@@ -2078,6 +2137,31 @@ export default function App() {
           {renderContent()}
         </div>
       </main>
+
+      {/* Real-time In-App Notification Toast */}
+      {activeToast && (
+        <div className="fixed bottom-4 right-4 z-50 max-w-sm w-[calc(100vw-2rem)] sm:w-80 bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-slate-700/80 flex items-start gap-3 animate-in slide-in-from-bottom-3 duration-300">
+          <img 
+            src={activeToast.icon || '/notification-icon.svg'} 
+            alt="Notification Icon" 
+            className="w-10 h-10 rounded-xl object-contain bg-white/10 p-1 shrink-0 border border-white/10" 
+          />
+          <div className="flex-1 min-w-0 pr-1">
+            <h4 className="text-xs font-black text-white leading-tight truncate">{activeToast.title}</h4>
+            {activeToast.body && (
+              <p className="text-[11px] text-slate-300 font-medium mt-0.5 leading-snug line-clamp-2">{activeToast.body}</p>
+            )}
+            <span className="text-[9px] text-blue-400 font-bold uppercase tracking-wider block mt-1">SCC Trust Notification</span>
+          </div>
+          <button 
+            onClick={() => setActiveToast(null)} 
+            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+            title="Dismiss notification"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -24,8 +24,8 @@ export const requestNotificationPermission = async () => {
 
 export const sendNotification = (title: string, options?: NotificationOptions) => {
   const notificationOptions = {
-    icon: '/splash/mobile.jpg',
-    badge: '/splash/mobile.jpg',
+    icon: '/notification-icon.svg',
+    badge: '/notification-icon.svg',
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -54,6 +54,7 @@ export const sendNotification = (title: string, options?: NotificationOptions) =
       detail: {
         title,
         body: options?.body || '',
+        icon: '/notification-icon.svg'
       }
     });
     window.dispatchEvent(event);

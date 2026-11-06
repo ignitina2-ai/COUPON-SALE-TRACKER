@@ -1,0 +1,8 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='192' height='192' viewBox='0 0 192 192'>
+  <rect width='192' height='192' rx='36' fill='#2563eb'/>
+  <rect x='16' y='16' width='160' height='160' rx='28' fill='#1d4ed8' stroke='#60a5fa' stroke-width='3'/>
+  <circle cx='96' cy='72' r='28' fill='#ffffff' opacity='0.2'/>
+  <path d='M96 44 L96 100 M68 72 L124 72' stroke='#ffffff' stroke-width='8' stroke-linecap='round'/>
+  <text x='96' y='142' font-family='Arial, sans-serif' font-size='22' font-weight='900' fill='#ffffff' text-anchor='middle' letter-spacing='1'>SCC 2026</text>
+  <text x='96' y='164' font-family='Arial, sans-serif' font-size='12' font-weight='700' fill='#93c5fd' text-anchor='middle'>COUPON SALE</text>
+</svg>

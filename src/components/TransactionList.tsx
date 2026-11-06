@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Search, 
   Filter, 
@@ -69,6 +69,13 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isCollapsedMode, setIsCollapsedMode] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleDocumentClick = () => setOpenMenuId(null);
+    window.addEventListener('click', handleDocumentClick);
+    return () => window.removeEventListener('click', handleDocumentClick);
+  }, []);
 
   // CSV Import States
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -805,9 +812,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
               )}
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-start gap-2 flex-1">
+                <div className="flex items-start gap-1.5 md:gap-2 flex-1">
                   {permissions?.canDelete !== false && (
-                    <div className="mt-1" onClick={(e) => e.stopPropagation()}>
+                    <div className="mt-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                       <input 
                         type="checkbox"
                         className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
@@ -816,6 +823,83 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       />
                     </div>
                   )}
+
+                  {/* 3-dot Action Menu Icon on Left Side (specifically for Mobile & Quick Actions) */}
+                  <div className="relative mt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setOpenMenuId(openMenuId === t.id ? null : t.id)}
+                      className={cn(
+                        "p-1 rounded-md transition-all cursor-pointer",
+                        openMenuId === t.id ? "bg-blue-100 text-blue-700" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                      )}
+                      title="Quick Actions Menu"
+                      aria-label="Quick Actions"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                    {openMenuId === t.id && (
+                      <div className="absolute left-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150">
+                        {onEdit && permissions?.canEdit !== false && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              onEdit(t);
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Edit2 size={13} className="text-blue-500" />
+                            <span>Edit Sale</span>
+                          </button>
+                        )}
+                        {permissions?.canShareReport !== false && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              const paymentLabel = customPaymentLabels?.[t.paymentMethod] || DEFAULT_PAYMENT_LABELS[t.paymentMethod] || t.paymentMethod;
+                              shareTransactionReceiptCard(t, paymentLabel);
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            <Share2 size={13} className="text-indigo-500" />
+                            <span>Share Card</span>
+                          </button>
+                        )}
+                        {permissions?.canEdit !== false && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenMenuId(null);
+                              onToggleTreasurer(t.id);
+                            }}
+                            className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 cursor-pointer transition-colors"
+                          >
+                            {t.paidToTreasurer ? <XCircle size={13} className="text-slate-400" /> : <CheckCircle size={13} className="text-emerald-500" />}
+                            <span>{t.paidToTreasurer ? 'Mark as Unpaid' : 'Mark as Paid'}</span>
+                          </button>
+                        )}
+                        {permissions?.canDelete !== false && (
+                          <>
+                            <div className="my-1 border-t border-slate-100" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                setDeleteIds([t.id]);
+                              }}
+                              className="w-full px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer transition-colors"
+                            >
+                              <Trash2 size={13} className="text-rose-500" />
+                              <span>Delete Sale</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="bg-blue-50 p-2 rounded-lg md:rounded-xl text-blue-600 ml-0.5 cursor-pointer select-none" onClick={() => toggleExpand(t.id)}>
                     <User size={16} className="md:w-5 md:h-5" />
                   </div>
