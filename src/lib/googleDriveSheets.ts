@@ -1,4 +1,5 @@
 import { Transaction, AppData } from '@/types';
+import { calculateCouponRangeFromBookString } from './utils';
 
 export const WORKSPACE_SCOPES = [
   'https://www.googleapis.com/auth/drive',
@@ -240,7 +241,7 @@ export function formatTransactionRow(tx: Transaction, index: number): (string | 
     tx.books || 0,
     tx.bookNumber || '',
     tx.coupons || 0,
-    tx.couponNumber || '',
+    tx.couponNumber || calculateCouponRangeFromBookString(tx.bookNumber) || '',
     tx.totalAmount || 0,
     tx.paidAmount || 0,
     tx.creditAmount || 0,
@@ -849,7 +850,7 @@ function writeAllRows(sheet, transactions) {
       tx.books || 0,
       tx.bookNumber || '',
       tx.coupons || 0,
-      tx.couponNumber || '',
+      tx.couponNumber || calculateCouponRangeFromBookString(tx.bookNumber) || '',
       tx.totalAmount || 0,
       tx.paidAmount || 0,
       tx.creditAmount || 0,

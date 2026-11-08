@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { shareTransactionReceiptCard } from '../utils/shareUtils';
 import { Transaction, PaymentMethod, DEFAULT_PAYMENT_LABELS } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, calculateCouponRangeFromBookString } from '@/lib/utils';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -147,7 +147,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
     link.setAttribute('download', 'scc_trust_transactions_import_template.csv');
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    if (link.parentNode) {
+      link.parentNode.removeChild(link);
+    }
   };
 
   const mapHeadersAndParse = (row: Record<string, any>, index: number): Omit<Transaction, 'id'> | null => {
@@ -530,7 +532,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
           t.books.toString(),
           t.coupons.toString(),
           t.bookNumber || '-',
-          t.couponNumber || '-',
+          t.couponNumber || calculateCouponRangeFromBookString(t.bookNumber) || '-',
           `Rs. ${t.totalAmount.toLocaleString('en-IN')}`,
           methodLabel,
           t.paidToTreasurer ? 'PAID' : 'PENDING'
@@ -648,7 +650,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
       Books: t.books,
       Coupons: t.coupons,
       BookNumber: t.bookNumber || '',
-      CouponNumber: t.couponNumber || '',
+      CouponNumber: t.couponNumber || calculateCouponRangeFromBookString(t.bookNumber) || '',
       TotalAmount: t.totalAmount,
       PaidAmount: t.paidAmount,
       CreditAmount: t.creditAmount,
@@ -665,7 +667,9 @@ const TransactionList: React.FC<TransactionListProps> = ({
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    if (link.parentNode) {
+      link.parentNode.removeChild(link);
+    }
   };
 
   const PaymentIcon = ({ method }: { method: PaymentMethod }) => {
@@ -971,11 +975,14 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       Mobile: <span className="text-slate-900 font-bold">{t.phone}</span>
                     </div>
                   )}
-                  {t.couponNumber && (
-                    <div className="bg-slate-50 px-1.5 py-0.5 rounded-md text-slate-600">
-                      Coupon No: <span className="text-slate-900 font-bold">{t.couponNumber}</span>
+                  {Boolean(t.couponNumber || (t.bookNumber && calculateCouponRangeFromBookString(t.bookNumber))) ? (
+                    <div className="bg-blue-50 text-blue-900 border border-blue-100/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 font-semibold">
+                      <span className="text-blue-700">Coupon No:</span>
+                      <span className="text-blue-950 font-bold font-mono">
+                        {t.couponNumber || calculateCouponRangeFromBookString(t.bookNumber)}
+                      </span>
                     </div>
-                  )}
+                  ) : null}
                   {t.creditAmount > 0 && (
                     <div className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shrink-0">
                       Credit: ₹{t.creditAmount.toLocaleString('en-IN')}

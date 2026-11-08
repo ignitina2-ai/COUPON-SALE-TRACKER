@@ -18,7 +18,7 @@ import {
   Check
 } from 'lucide-react';
 import { Transaction, PaymentMethod, COUPON_PRICE, COUPONS_PER_BOOK, CustomPaymentMethod } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, calculateCouponRangeFromBookString } from '@/lib/utils';
 
 import TransactionList from './TransactionList';
 
@@ -266,11 +266,18 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const handleBookNumberChange = (value: string) => {
     const calculatedCount = calculateCountFromRangeString(value);
-    setFormData(prev => ({
-      ...prev,
-      bookNumber: value,
-      books: (calculatedCount !== null && calculatedCount > 0) ? calculatedCount : prev.books
-    }));
+    const calculatedCoupons = calculateCouponRangeFromBookString(value);
+    setFormData(prev => {
+      const prevAutoCoupons = calculateCouponRangeFromBookString(prev.bookNumber);
+      const shouldUpdateCouponNumber = !prev.couponNumber || prev.couponNumber === prevAutoCoupons;
+
+      return {
+        ...prev,
+        bookNumber: value,
+        books: (calculatedCount !== null && calculatedCount > 0) ? calculatedCount : prev.books,
+        couponNumber: shouldUpdateCouponNumber ? calculatedCoupons : prev.couponNumber
+      };
+    });
   };
 
   const handleCouponNumberChange = (value: string) => {
@@ -309,6 +316,8 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     const timeStr = `T${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${pad(now.getMilliseconds(), 3)}`;
     const finalDateStr = new Date(formData.date + timeStr).toISOString();
 
+    const finalCouponNumber = formData.couponNumber?.trim() || calculateCouponRangeFromBookString(formData.bookNumber) || '';
+
     if (editingTransaction && onUpdateTransaction) {
       onUpdateTransaction(editingTransaction.id, {
         name: formData.name,
@@ -317,7 +326,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         books: Number(formData.books),
         coupons: Number(formData.coupons),
         bookNumber: formData.bookNumber,
-        couponNumber: formData.couponNumber,
+        couponNumber: finalCouponNumber,
         totalAmount,
         paidAmount: finalPaidAmount,
         creditAmount: finalCreditAmount,
@@ -333,7 +342,7 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         books: Number(formData.books),
         coupons: Number(formData.coupons),
         bookNumber: formData.bookNumber,
-        couponNumber: formData.couponNumber,
+        couponNumber: finalCouponNumber,
         totalAmount,
         paidAmount: finalPaidAmount,
         creditAmount: finalCreditAmount,
@@ -587,12 +596,24 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 bgClass="bg-white border-blue-400 text-blue-950 placeholder:text-blue-400 focus:ring-blue-600 focus:border-blue-600 font-bold"
                 labelClass="text-blue-950 font-black"
               />
-              {formData.bookNumber && calculateCountFromRangeString(formData.bookNumber) !== null && (
-                <p className="text-[10px] font-black text-blue-900 mt-1 flex items-center gap-1 leading-tight">
-                  <CheckCircle2 size={12} className="text-blue-600 shrink-0" />
-                  <span>Auto-counted: {calculateCountFromRangeString(formData.bookNumber)} Books ({calculateCountFromRangeString(formData.bookNumber)! * COUPONS_PER_BOOK} Coupons)</span>
-                </p>
-              )}
+              {Boolean(formData.bookNumber && calculateCouponRangeFromBookString(formData.bookNumber)) ? (
+                <div className="mt-1.5 p-2 bg-gradient-to-r from-blue-50 to-indigo-50/80 border border-blue-200 rounded-xl text-blue-950 shadow-xs animate-in fade-in-50 duration-200 space-y-1">
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <Ticket size={13} className="text-blue-600 shrink-0" />
+                      <span className="text-[10px] uppercase font-bold text-blue-800 tracking-wider shrink-0">Coupon Number:</span>
+                      <span className="text-xs font-black text-blue-950 font-mono tracking-tight break-all">
+                        {calculateCouponRangeFromBookString(formData.bookNumber)}
+                      </span>
+                    </div>
+                    {calculateCountFromRangeString(formData.bookNumber) !== null && (
+                      <span className="text-[9px] font-black bg-blue-200/80 text-blue-900 px-2 py-0.5 rounded-full shrink-0">
+                        {calculateCountFromRangeString(formData.bookNumber)} Books ({calculateCountFromRangeString(formData.bookNumber)! * COUPONS_PER_BOOK} Coupons)
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import { toPng } from 'html-to-image';
 import { Transaction } from '../types';
+import { calculateCouponRangeFromBookString } from '../lib/utils';
 
 // Utility to share or download the generated PNG image with improved mobile browser compatibility
 export async function shareOrDownloadImage(dataUrl: string, fileName: string, title: string) {
@@ -28,7 +29,9 @@ export async function shareOrDownloadImage(dataUrl: string, fileName: string, ti
   link.href = dataUrl;
   document.body.appendChild(link);
   link.click();
-  document.body.removeChild(link);
+  if (link.parentNode) {
+    link.parentNode.removeChild(link);
+  }
 }
 
 // 1. Generate Daily Coupon Sales Card
@@ -159,7 +162,9 @@ export async function shareDailySalesCard(options: {
     // Warm up/resolve rendering, call twice for Safari/iOS support
     await toPng(container, { cacheBust: true, pixelRatio: 2 });
     const dataUrl = await toPng(container, { cacheBust: true, pixelRatio: 2 });
-    document.body.removeChild(container);
+    if (container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
     await shareOrDownloadImage(dataUrl, `daily_coupon_sales_${date.replace(/[^a-zA-Z0-9]/g, '_')}`, `Coupon Sales Report (${date})`);
   } catch (e) {
     console.error("Error creating image card:", e);
@@ -284,7 +289,9 @@ export async function shareUPIReceiptCard(options: {
     // Warm up/resolve rendering, call twice for Safari/iOS support
     await toPng(container, { cacheBust: true, pixelRatio: 2 });
     const dataUrl = await toPng(container, { cacheBust: true, pixelRatio: 2 });
-    document.body.removeChild(container);
+    if (container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
     await shareOrDownloadImage(dataUrl, `upi_receipt_${paymentMethodId.toLowerCase().replace(/[^a-z0-9]/g, '_')}`, `${methodLabel} Total Report`);
   } catch (e) {
     console.error("Error creating image card:", e);
@@ -364,10 +371,10 @@ export async function shareTransactionReceiptCard(transaction: Transaction, paym
         <span style="font-family: monospace; color: #cbd5e1; text-align: right; font-weight: 900;">${transaction.bookNumber || 'N/A'}</span>
       </div>
 
-      ${transaction.couponNumber ? `
+      ${(transaction.couponNumber || calculateCouponRangeFromBookString(transaction.bookNumber)) ? `
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(30, 41, 59, 0.6);">
         <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Coupon Number (കൂപ്പൺ നമ്പർ)</span>
-        <span style="font-family: monospace; color: #cbd5e1; text-align: right; font-weight: 900;">${transaction.couponNumber}</span>
+        <span style="font-family: monospace; color: #cbd5e1; text-align: right; font-weight: 900;">${transaction.couponNumber || calculateCouponRangeFromBookString(transaction.bookNumber)}</span>
       </div>
       ` : ''}
 
@@ -442,7 +449,9 @@ export async function shareTransactionReceiptCard(transaction: Transaction, paym
     // Warm up/resolve rendering, call twice for Safari/iOS support
     await toPng(container, { cacheBust: true, pixelRatio: 2 });
     const dataUrl = await toPng(container, { cacheBust: true, pixelRatio: 2 });
-    document.body.removeChild(container);
+    if (container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
     await shareOrDownloadImage(dataUrl, `receipt_${transaction.name.replace(/[^a-zA-Z0-9]/g, '_')}_${transaction.id.substring(0, 5)}`, `Receipt of ${transaction.name}`);
   } catch (e) {
     console.error("Error creating image card:", e);

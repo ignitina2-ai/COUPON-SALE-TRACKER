@@ -26,7 +26,7 @@ import {
   Printer
 } from 'lucide-react';
 import { Transaction, CreditSettings, PaymentMethod, DEFAULT_PAYMENT_LABELS, CustomPaymentMethod } from '@/types';
-import { cn } from '@/lib/utils';
+import { cn, calculateCouponRangeFromBookString } from '@/lib/utils';
 import { format, differenceInDays } from 'date-fns';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -252,7 +252,7 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
         `Rs. ${t.paidAmount.toLocaleString('en-IN')}`,
         `Rs. ${t.creditAmount.toLocaleString('en-IN')}`,
         t.bookNumber || '-',
-        t.couponNumber || '-'
+        t.couponNumber || calculateCouponRangeFromBookString(t.bookNumber) || '-'
       ]),
       [
         'TOTAL SUMMARY',
@@ -354,7 +354,7 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
       PaidAmount: t.paidAmount,
       CreditAmount: t.creditAmount,
       BookNumber: t.bookNumber || '',
-      CouponNumber: t.couponNumber || ''
+      CouponNumber: t.couponNumber || calculateCouponRangeFromBookString(t.bookNumber) || ''
     }));
 
     const csv = Papa.unparse(csvData);
@@ -366,7 +366,9 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    if (link.parentNode) {
+      link.parentNode.removeChild(link);
+    }
   };
 
   return (
@@ -558,11 +560,14 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
                           Mobile: <span className="text-slate-900 font-bold">{t.phone}</span>
                         </div>
                       )}
-                      {t.couponNumber && (
-                        <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
-                          Coupon No: <span className="text-slate-900 font-bold">{t.couponNumber}</span>
+                      {Boolean(t.couponNumber || (t.bookNumber && calculateCouponRangeFromBookString(t.bookNumber))) ? (
+                        <div className="bg-blue-50 text-blue-900 border border-blue-100/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 font-semibold">
+                          <span className="text-blue-700">Coupon No:</span>
+                          <span className="text-blue-950 font-bold font-mono">
+                            {t.couponNumber || calculateCouponRangeFromBookString(t.bookNumber)}
+                          </span>
                         </div>
-                      )}
+                      ) : null}
                     </div>
 
                     {/* Action buttons inside expanded card */}

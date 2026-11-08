@@ -525,9 +525,10 @@ const IncomeExpenseManagement: React.FC<IncomeExpenseManagementProps> = ({
     link.setAttribute('href', url);
     link.setAttribute('download', `income_expense_${format(new Date(), 'yyyy-MM-dd')}.csv`);
     link.style.visibility = 'hidden';
-    document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    if (link.parentNode) {
+      link.parentNode.removeChild(link);
+    }
   };
 
   const toggleSelectAll = () => {

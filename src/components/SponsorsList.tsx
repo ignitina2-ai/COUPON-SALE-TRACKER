@@ -439,9 +439,10 @@ const SponsorsList: React.FC<SponsorsListProps> = ({
     link.setAttribute('href', url);
     link.setAttribute('download', `prize_sponsors_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`);
     link.style.visibility = 'hidden';
-    document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    if (link.parentNode) {
+      link.parentNode.removeChild(link);
+    }
   };
 
   return (

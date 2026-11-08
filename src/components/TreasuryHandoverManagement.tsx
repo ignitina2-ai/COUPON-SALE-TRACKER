@@ -436,9 +436,10 @@ const TreasuryHandoverManagement: React.FC<TreasuryHandoverManagementProps> = ({
     link.setAttribute('href', url);
     link.setAttribute('download', `treasury_handovers_${format(new Date(), 'yyyy-MM-dd')}.csv`);
     link.style.visibility = 'hidden';
-    document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    if (link.parentNode) {
+      link.parentNode.removeChild(link);
+    }
   };
 
   return (
