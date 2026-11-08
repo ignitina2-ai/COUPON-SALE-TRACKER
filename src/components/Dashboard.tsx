@@ -306,27 +306,49 @@ const Dashboard: React.FC<DashboardProps> = ({
     return null;
   };
 
-  const StatCard = ({ title, value, icon: Icon, color, subValue, subLabel, className, isCurrency = true, subIsCurrency = true }: any) => (
-    <div className={cn("bg-white p-2.5 sm:p-3 rounded-xl shadow-xs border border-slate-100/90 flex items-center gap-2 sm:gap-3 transition-all hover:shadow-md", className)}>
-      <div className={cn("p-1.5 sm:p-2 rounded-lg shrink-0", color)}>
-        <Icon className="text-white w-3.5 h-3.5 sm:w-4 sm:h-4" />
-      </div>
-      <div className="min-w-0 flex-1 text-left">
-        <span className="text-slate-500 text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wider block truncate">{title}</span>
-        <h3 className="text-xs sm:text-sm md:text-base font-black text-slate-900 tracking-tight">
-          {isCurrency ? `₹${typeof value === 'number' ? value.toLocaleString('en-IN') : value}` : (typeof value === 'number' ? value.toLocaleString('en-IN') : value)}
-        </h3>
-        {subValue !== undefined && subLabel && (
-          <p className="text-[8px] sm:text-[9px] text-slate-400 font-semibold uppercase tracking-wider flex items-center gap-1 mt-0.5 truncate">
-            <span>{subLabel}:</span>
-            <span className="text-slate-700 font-extrabold">
-              {subIsCurrency ? `₹${typeof subValue === 'number' ? subValue.toLocaleString('en-IN') : subValue}` : subValue}
-            </span>
-          </p>
+  const StatCard = ({ title, value, icon: Icon, color, subValue, subLabel, className, isCurrency = true, subIsCurrency = true, cardBg, onClick }: any) => {
+    const isCustomBg = Boolean(cardBg);
+    return (
+      <div 
+        onClick={onClick}
+        className={cn(
+          "p-2.5 sm:p-3 rounded-xl shadow-xs flex items-center gap-2 sm:gap-3 transition-all hover:shadow-md",
+          isCustomBg ? cardBg : "bg-white border border-slate-100/90",
+          onClick && "cursor-pointer active:scale-95",
+          className
         )}
+      >
+        <div className={cn("p-1.5 sm:p-2 rounded-lg shrink-0", color)}>
+          <Icon className="text-white w-3.5 h-3.5 sm:w-4 sm:h-4" />
+        </div>
+        <div className="min-w-0 flex-1 text-left">
+          <span className={cn(
+            "text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wider block truncate",
+            isCustomBg ? "text-red-100" : "text-slate-500"
+          )}>
+            {title}
+          </span>
+          <h3 className={cn(
+            "text-xs sm:text-sm md:text-base font-black tracking-tight",
+            isCustomBg ? "text-white" : "text-slate-900"
+          )}>
+            {isCurrency ? `₹${typeof value === 'number' ? value.toLocaleString('en-IN') : value}` : (typeof value === 'number' ? value.toLocaleString('en-IN') : value)}
+          </h3>
+          {subValue !== undefined && subLabel && (
+            <p className={cn(
+              "text-[8px] sm:text-[9px] font-semibold uppercase tracking-wider flex items-center gap-1 mt-0.5 truncate",
+              isCustomBg ? "text-red-200" : "text-slate-400"
+            )}>
+              <span>{subLabel}:</span>
+              <span className={cn("font-extrabold", isCustomBg ? "text-white" : "text-slate-700")}>
+                {subIsCurrency ? `₹${typeof subValue === 'number' ? subValue.toLocaleString('en-IN') : subValue}` : subValue}
+              </span>
+            </p>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
 
   return (
@@ -420,7 +442,7 @@ const Dashboard: React.FC<DashboardProps> = ({
         </button>
         <button 
           onClick={() => (window as any).setActiveTab?.('credit')}
-          className="flex flex-col items-center justify-center p-3 md:p-4 bg-amber-500 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-amber-600 transition-all active:scale-95 cursor-pointer text-center"
+          className="flex flex-col items-center justify-center p-3 md:p-4 bg-red-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-red-700 transition-all active:scale-95 cursor-pointer text-center"
         >
           <CreditCard className="mb-1.5 w-5 h-5" />
           <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Credit</span>
