@@ -95,20 +95,20 @@ export async function shareDailySalesCard(options: {
     <!-- Main Metrics Grid with ultra high contrast -->
     <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
       <div style="background-color: rgba(59, 130, 246, 0.08); border: 2px solid #3b82f6; padding: 18px; border-radius: 16px; display: flex; flex-direction: column; gap: 6px;">
-        <span style="color: #cbd5e1; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Total Sales (ആകെ വില്പന)</span>
+        <span style="color: #cbd5e1; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Total Sales</span>
         <span style="font-size: 26px; font-weight: 900; color: #60a5fa; font-family: monospace;">₹${totalSales.toLocaleString('en-IN')}</span>
         ${totalCoupons !== undefined && totalCoupons > 0 ? `<span style="color: #93c5fd; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">🎟️ ${totalCoupons.toLocaleString('en-IN')} Coupons (${Math.floor(totalCoupons / 25)} Books)</span>` : ''}
       </div>
       <div style="background-color: rgba(245, 158, 11, 0.08); border: 2px solid #f59e0b; padding: 18px; border-radius: 16px; display: flex; flex-direction: column; gap: 6px;">
-        <span style="color: #cbd5e1; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Total Credits (ബാക്കി പത്രം)</span>
+        <span style="color: #cbd5e1; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Total Credits</span>
         <span style="font-size: 26px; font-weight: 900; color: #fbbf24; font-family: monospace;">₹${totalCredit.toLocaleString('en-IN')}</span>
       </div>
       <div style="background-color: rgba(16, 185, 129, 0.08); border: 2px solid #10b981; padding: 18px; border-radius: 16px; display: flex; flex-direction: column; gap: 6px;">
-        <span style="color: #cbd5e1; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Cash Collections (ക്യാഷ്)</span>
+        <span style="color: #cbd5e1; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Cash Collections</span>
         <span style="font-size: 26px; font-weight: 900; color: #34d399; font-family: monospace;">₹${totalCashSale.toLocaleString('en-IN')}</span>
       </div>
       <div style="background-color: rgba(129, 140, 248, 0.08); border: 2px solid #818cf8; padding: 18px; border-radius: 16px; display: flex; flex-direction: column; gap: 6px;">
-        <span style="color: #cbd5e1; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">UPI Receipts (യു.പി.ഐ)</span>
+        <span style="color: #cbd5e1; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">UPI Receipts</span>
         <span style="font-size: 26px; font-weight: 900; color: #a5b4fc; font-family: monospace;">₹${totalUPI.toLocaleString('en-IN')}</span>
       </div>
     </div>
