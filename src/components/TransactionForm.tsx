@@ -265,27 +265,36 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
   }, [formData.paymentMethod]);
 
   const handleBookNumberChange = (value: string) => {
+    const trimmed = value.trim();
     const calculatedCount = calculateCountFromRangeString(value);
     const calculatedCoupons = calculateCouponRangeFromBookString(value);
     setFormData(prev => {
       const prevAutoCoupons = calculateCouponRangeFromBookString(prev.bookNumber);
       const shouldUpdateCouponNumber = !prev.couponNumber || prev.couponNumber === prevAutoCoupons;
 
+      let newBooks = prev.books;
+      if (!trimmed) {
+        newBooks = 0;
+      } else if (calculatedCount !== null) {
+        newBooks = calculatedCount;
+      }
+
       return {
         ...prev,
         bookNumber: value,
-        books: (calculatedCount !== null && calculatedCount > 0) ? calculatedCount : prev.books,
+        books: newBooks,
         couponNumber: shouldUpdateCouponNumber ? calculatedCoupons : prev.couponNumber
       };
     });
   };
 
   const handleCouponNumberChange = (value: string) => {
+    const trimmed = value.trim();
     const calculatedCount = calculateCountFromRangeString(value);
     setFormData(prev => ({
       ...prev,
       couponNumber: value,
-      coupons: (calculatedCount !== null && calculatedCount > 0) ? calculatedCount : prev.coupons
+      coupons: !trimmed ? 0 : ((calculatedCount !== null && calculatedCount > 0) ? calculatedCount : prev.coupons)
     }));
   };
 
@@ -596,24 +605,6 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
                 bgClass="bg-white border-blue-400 text-blue-950 placeholder:text-blue-400 focus:ring-blue-600 focus:border-blue-600 font-bold"
                 labelClass="text-blue-950 font-black"
               />
-              {Boolean(formData.bookNumber && calculateCouponRangeFromBookString(formData.bookNumber)) ? (
-                <div className="mt-1.5 p-2 bg-gradient-to-r from-blue-50 to-indigo-50/80 border border-blue-200 rounded-xl text-blue-950 shadow-xs animate-in fade-in-50 duration-200 space-y-1">
-                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <Ticket size={13} className="text-blue-600 shrink-0" />
-                      <span className="text-[10px] uppercase font-bold text-blue-800 tracking-wider shrink-0">Coupon Number:</span>
-                      <span className="text-xs font-black text-blue-950 font-mono tracking-tight break-all">
-                        {calculateCouponRangeFromBookString(formData.bookNumber)}
-                      </span>
-                    </div>
-                    {calculateCountFromRangeString(formData.bookNumber) !== null && (
-                      <span className="text-[9px] font-black bg-blue-200/80 text-blue-900 px-2 py-0.5 rounded-full shrink-0">
-                        {calculateCountFromRangeString(formData.bookNumber)} Books ({calculateCountFromRangeString(formData.bookNumber)! * COUPONS_PER_BOOK} Coupons)
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ) : null}
             </div>
           </div>
 
