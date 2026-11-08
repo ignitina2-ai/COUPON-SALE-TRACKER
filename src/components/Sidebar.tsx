@@ -102,18 +102,23 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      {/* Mobile Overlay */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 md:hidden"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
+      {/* Mobile Backdrop with smooth opacity transition */}
+      <div 
+        className={cn(
+          "fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-40 md:hidden transition-opacity duration-300 ease-out",
+          isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+        onClick={() => setIsOpen(false)}
+        aria-hidden={!isOpen}
+      />
 
-      {/* Sidebar */}
+      {/* Sidebar with GPU hardware-accelerated smooth slide and spring physics */}
       <aside className={cn(
-        "fixed top-0 left-0 h-full bg-slate-900 text-white z-50 transition-all duration-300 ease-in-out",
-        isOpen ? "w-64" : "w-0 md:w-20 overflow-hidden"
+        "fixed top-0 left-0 h-full bg-slate-900 text-white z-50 transform-gpu will-change-transform shadow-2xl md:shadow-none",
+        "transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
+        "w-72 max-w-[85vw] md:max-w-none",
+        isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+        isOpen ? "md:w-64" : "md:w-20"
       )}>
         <div className="flex flex-col h-full">
           {/* Header */}
@@ -125,7 +130,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             )}
             <button 
               onClick={() => setIsOpen(!isOpen)}
-              className="p-1 hover:bg-slate-800 rounded-md transition-colors"
+              className="p-1.5 hover:bg-slate-800 rounded-lg transition-all active:scale-90 cursor-pointer text-slate-300 hover:text-white"
+              title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+              aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
             >
               {isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
             </button>
@@ -141,14 +148,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                   if (window.innerWidth < 768) setIsOpen(false);
                 }}
                 className={cn(
-                  "w-full flex items-center p-3 rounded-lg transition-all duration-200",
+                  "w-full flex items-center p-3 rounded-xl transition-all duration-150 cursor-pointer active:scale-95 select-none",
                   activeTab === item.id 
-                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" 
-                    : "text-slate-400 hover:bg-slate-800 hover:text-white"
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-bold scale-[1.01]" 
+                    : "text-slate-400 hover:bg-slate-800/80 hover:text-white"
                 )}
               >
-                <item.icon size={24} className={cn(isOpen ? "mr-3" : "mx-auto")} />
-                {isOpen && <span className="font-medium">{item.label}</span>}
+                <item.icon size={22} className={cn(isOpen ? "mr-3" : "mx-auto", "shrink-0 transition-transform duration-150")} />
+                {isOpen && <span className="font-medium text-sm">{item.label}</span>}
               </button>
             ))}
 

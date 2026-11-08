@@ -2136,7 +2136,9 @@ export default function App() {
               </div>
             </div>
           )}
-          {renderContent()}
+          <div key={activeTab} className="page-transition-enter">
+            {renderContent()}
+          </div>
         </div>
       </main>
 

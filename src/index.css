@@ -252,3 +252,107 @@ body {
   animation-play-state: paused;
 }
 
+/* =========================================================================
+   Universal Smooth Animation System: Tapping, Landing & View Physics
+   ========================================================================= */
+
+/* 1. Global Touch / Tap Feedback for Buttons, Links & Interactive Elements */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+.btn,
+.tap-highlight {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 140ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              background-color 150ms ease,
+              opacity 150ms ease,
+              box-shadow 150ms ease,
+              border-color 150ms ease;
+  will-change: transform;
+}
+
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active,
+.btn:active,
+.tap-highlight:active {
+  transform: scale(0.96);
+}
+
+/* 2. Card Interactive Physics (Hover Elevation & Tactile Press) */
+.tap-card {
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 180ms ease,
+              border-color 180ms ease,
+              background-color 180ms ease;
+  will-change: transform;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tap-card:hover {
+  transform: translateY(-2px);
+}
+
+.tap-card:active {
+  transform: scale(0.982);
+}
+
+/* 3. Smooth Page & Tab Landing Entrance Animation */
+@keyframes viewLanding {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.995);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.page-transition-enter {
+  animation: viewLanding 280ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* 4. Smooth Dialog / Modal Pop Entrance */
+@keyframes modalPopup {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-pop {
+  animation: modalPopup 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform, opacity;
+}
+
+/* 5. Smooth Toast Slide In */
+@keyframes toastLanding {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-toast {
+  animation: toastLanding 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* 6. Respect Reduced Motion Settings */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

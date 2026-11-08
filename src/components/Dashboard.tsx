@@ -312,7 +312,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       <div 
         onClick={onClick}
         className={cn(
-          "p-2.5 sm:p-3 rounded-xl shadow-xs flex items-center gap-2 sm:gap-3 transition-all hover:shadow-md",
+          "p-2.5 sm:p-3 rounded-xl shadow-xs flex items-center gap-2 sm:gap-3 transition-all hover:shadow-md tap-card select-none",
           isCustomBg ? cardBg : "bg-white border border-slate-100/90",
           onClick && "cursor-pointer active:scale-95",
           className
