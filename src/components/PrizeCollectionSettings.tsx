@@ -889,34 +889,6 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
             </button>
           )}
         </div>
-
-        {/* Quick KPI stats strip */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-white/10 text-xs sm:text-sm">
-          <div className="bg-white/5 backdrop-blur-md p-3.5 rounded-2xl border border-white/10">
-            <div className="text-slate-400 text-xs font-semibold">Total Prizes</div>
-            <div className="text-xl sm:text-2xl font-black text-white mt-0.5">{stats.total}</div>
-            <div className="text-[11px] text-slate-300 mt-0.5">111 Official Prizes</div>
-          </div>
-          <div className="bg-emerald-500/10 backdrop-blur-md p-3.5 rounded-2xl border border-emerald-400/20">
-            <div className="text-emerald-300 text-xs font-semibold">Collected</div>
-            <div className="text-xl sm:text-2xl font-black text-emerald-300 mt-0.5">
-              {stats.collectedCount} <span className="text-xs font-medium text-emerald-200">({stats.percentCollected}%)</span>
-            </div>
-            <div className="text-[11px] text-emerald-200/80 mt-0.5">{stats.sponsorCount} Sponsor + {stats.trustCount} Trust</div>
-          </div>
-          <div className="bg-amber-500/10 backdrop-blur-md p-3.5 rounded-2xl border border-amber-400/20">
-            <div className="text-amber-300 text-xs font-semibold">Pending</div>
-            <div className="text-xl sm:text-2xl font-black text-amber-300 mt-0.5">{stats.pendingCount}</div>
-            <div className="text-[11px] text-amber-200/80 mt-0.5">Need Sponsorship/Trust</div>
-          </div>
-          <div className="bg-blue-500/10 backdrop-blur-md p-3.5 rounded-2xl border border-blue-400/20">
-            <div className="text-blue-300 text-xs font-semibold">Trust Expense</div>
-            <div className="text-xl sm:text-2xl font-black text-blue-300 mt-0.5">
-              ₹{stats.trustTotalAmount.toLocaleString('en-IN')}
-            </div>
-            <div className="text-[11px] text-blue-200/80 mt-0.5">Balance: ₹{stats.balanceAmount.toLocaleString('en-IN')}</div>
-          </div>
-        </div>
       </div>
 
       {/* Notifications / Alerts */}
@@ -938,93 +910,6 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
 
       {/* Main Grid: 4 Core Sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-        {/* ========================================================================= */}
-        {/* GOOGLE SHEETS SYNC & LIVE CLOUD DATABASE (ഗൂഗിൾ ഷീറ്റ് സിങ്ക്) */}
-        {/* ========================================================================= */}
-        <div className="lg:col-span-2 bg-gradient-to-br from-emerald-950 via-slate-900 to-emerald-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-emerald-800/60 space-y-6 relative overflow-hidden">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
-                <FileSpreadsheet size={24} />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg sm:text-xl font-black text-white">
-                    Google Sheets & Cloud Database Live Sync
-                  </h2>
-                  <span className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full">
-                    Live
-                  </span>
-                </div>
-                
-              </div>
-            </div>
-
-            <div className="flex items-center flex-wrap gap-2.5 shrink-0">
-              {sheetLink && (
-                <a
-                  href={sheetLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition border border-white/10"
-                >
-                  <ExternalLink size={14} className="text-emerald-400" />
-                  <span>Open Google Sheet</span>
-                </a>
-              )}
-
-              <button
-                onClick={handleSyncToGoogleSheet}
-                disabled={isSyncingSheet}
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/25 transition cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw size={15} className={isSyncingSheet ? "animate-spin" : ""} />
-                <span>{isSyncingSheet ? 'Syncing to Sheet...' : 'Sync to Google Sheet Now'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Status and details grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-white/10 text-xs">
-            <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10 space-y-1">
-              <span className="text-slate-400 font-bold uppercase text-[10px]">Cloud Database Status</span>
-              <div className="flex items-center gap-2 text-emerald-300 font-bold text-sm">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>Firestore Multi-Device Active</span>
-              </div>
-              <p className="text-[11px] text-slate-300">Changes sync across authorized admin screens in real time.</p>
-            </div>
-
-            <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10 space-y-1">
-              <span className="text-slate-400 font-bold uppercase text-[10px]">Google Sheet Tab</span>
-              <div className="flex items-center gap-2 text-white font-bold text-sm">
-                <FileSpreadsheet size={16} className="text-emerald-400" />
-                <span>Tab: PRIZE COLLECTION</span>
-              </div>
-              <p className="text-[11px] text-slate-300">
-                {lastSyncedTime ? `Last Synced: ${lastSyncedTime}` : 'Ready for synchronization'}
-              </p>
-            </div>
-
-            <div className="bg-white/5 p-3.5 rounded-2xl border border-white/10 space-y-1">
-              <span className="text-slate-400 font-bold uppercase text-[10px]">Apps Script Webhook</span>
-              <div className="flex items-center justify-between gap-2">
-                <span className="font-bold text-emerald-300 text-xs truncate max-w-[170px]" title={webhookUrl}>
-                  {webhookUrl ? 'Connected & Operational' : 'Default Webhook'}
-                </span>
-                <button
-                  onClick={() => setShowScriptModal(true)}
-                  className="px-2 py-1 bg-white/10 hover:bg-white/20 text-white text-[10px] font-bold rounded-lg transition cursor-pointer"
-                >
-                  View Code
-                </button>
-              </div>
-              <p className="text-[11px] text-slate-300">Zero-lag background sync for all team members.</p>
-            </div>
-          </div>
-        </div>
-        
         {/* ========================================================================= */}
         {/* SECTION 1: CATEGORY SUMMARY (കാറ്റഗറി സംഗ്രഹം) */}
         {/* ========================================================================= */}
@@ -1181,7 +1066,7 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
               </div>
               <div>
                 <h2 className="text-lg sm:text-xl font-black text-slate-900">
-                  2. Backup Data (ബാക്കപ്പ് എക്സ്പോർട്ട്)
+                  2. Backup Data
                 </h2>
                 <p className="text-xs sm:text-sm text-slate-500">
                   Export complete Prize Collection state, sponsor records, and financial ledger to JSON.
