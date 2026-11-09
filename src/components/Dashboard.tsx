@@ -459,9 +459,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   Interactive
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Tap or hover button slices to navigate · Live coupon count in center
-              </p>
+              
             </div>
           </div>
 
