@@ -20,6 +20,9 @@ export interface DonutMenuItem {
   activeFill: string;
   defaultFill: string;
   defaultStroke: string;
+  defaultTextColor: string;
+  defaultSubtitleColor: string;
+  defaultIconColor: string;
   glowColor: string;
   metric?: string;
   metricLabel?: string;
@@ -83,7 +86,7 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
     return () => cancelAnimationFrame(handle);
   }, [totalCoupons]);
 
-  // Construct items for the donut slices with previous dark color on tap and crisp default card
+  // Construct items for the donut slices: Light color before tap, Dark color on tap/hover
   const menuItems: DonutMenuItem[] = useMemo(() => {
     const items: DonutMenuItem[] = [
       {
@@ -92,9 +95,12 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
         subtitle: 'Quick Entry',
         icon: PlusCircle,
         color: '#2563eb', // Blue-600
-        activeFill: '#2563eb',
-        defaultFill: '#ffffff',
-        defaultStroke: '#cbd5e1',
+        defaultFill: '#dbeafe', // Light blue before tap
+        defaultStroke: '#93c5fd',
+        defaultTextColor: '#1e3a8a',
+        defaultSubtitleColor: '#2563eb',
+        defaultIconColor: '#2563eb',
+        activeFill: '#2563eb', // Solid Dark Blue on tap
         glowColor: 'rgba(37, 99, 235, 0.45)',
         metric: 'New Entry',
         metricLabel: 'Scroll to Form',
@@ -113,9 +119,12 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
         subtitle: `${txnCount} Records`,
         icon: History,
         color: '#334155', // Slate-700
-        activeFill: '#334155',
-        defaultFill: '#ffffff',
+        defaultFill: '#f1f5f9', // Light slate before tap
         defaultStroke: '#cbd5e1',
+        defaultTextColor: '#0f172a',
+        defaultSubtitleColor: '#475569',
+        defaultIconColor: '#334155',
+        activeFill: '#334155', // Solid Dark Slate on tap
         glowColor: 'rgba(51, 65, 85, 0.45)',
         metric: `${txnCount} Txns`,
         metricLabel: 'View Sales History',
@@ -127,9 +136,12 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
         subtitle: totalCredit > 0 ? `₹${totalCredit.toLocaleString('en-IN')}` : 'Balances',
         icon: CreditCard,
         color: '#dc2626', // Red-600
-        activeFill: '#dc2626',
-        defaultFill: '#ffffff',
-        defaultStroke: '#cbd5e1',
+        defaultFill: '#ffe4e6', // Light rose before tap (as requested: "light rose color")
+        defaultStroke: '#fda4af',
+        defaultTextColor: '#9f1239',
+        defaultSubtitleColor: '#e11d48',
+        defaultIconColor: '#e11d48',
+        activeFill: '#dc2626', // Solid Dark Red on tap (as requested: "red color")
         glowColor: 'rgba(220, 38, 38, 0.45)',
         metric: `₹${totalCredit.toLocaleString('en-IN')}`,
         metricLabel: 'Pending Credit',
@@ -141,9 +153,12 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
         subtitle: '111 Prizes',
         icon: Gift,
         color: '#d97706', // Amber-600
-        activeFill: '#d97706',
-        defaultFill: '#ffffff',
-        defaultStroke: '#cbd5e1',
+        defaultFill: '#fef3c7', // Light amber before tap
+        defaultStroke: '#fcd34d',
+        defaultTextColor: '#78350f',
+        defaultSubtitleColor: '#d97706',
+        defaultIconColor: '#d97706',
+        activeFill: '#d97706', // Solid Dark Amber on tap
         glowColor: 'rgba(217, 119, 6, 0.45)',
         metric: '111 Prizes',
         metricLabel: 'Sponsors & Trust',
@@ -155,9 +170,12 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
         subtitle: 'Cash Flow',
         icon: TrendingDown,
         color: '#4f46e5', // Indigo-600
-        activeFill: '#4f46e5',
-        defaultFill: '#ffffff',
-        defaultStroke: '#cbd5e1',
+        defaultFill: '#e0e7ff', // Light indigo before tap
+        defaultStroke: '#a5b4fc',
+        defaultTextColor: '#312e81',
+        defaultSubtitleColor: '#4f46e5',
+        defaultIconColor: '#4f46e5',
+        activeFill: '#4f46e5', // Solid Dark Indigo on tap
         glowColor: 'rgba(79, 70, 229, 0.45)',
         metric: 'Cash Flow',
         metricLabel: 'Accounts & Expenses',
@@ -169,9 +187,12 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
         subtitle: totalHandover > 0 ? `₹${totalHandover.toLocaleString('en-IN')}` : 'Secretary',
         icon: Users,
         color: '#059669', // Emerald-600
-        activeFill: '#059669',
-        defaultFill: '#ffffff',
-        defaultStroke: '#cbd5e1',
+        defaultFill: '#d1fae5', // Light emerald/mint before tap
+        defaultStroke: '#6ee7b7',
+        defaultTextColor: '#064e3b',
+        defaultSubtitleColor: '#059669',
+        defaultIconColor: '#059669',
+        activeFill: '#059669', // Solid Dark Emerald on tap
         glowColor: 'rgba(5, 150, 105, 0.45)',
         metric: `₹${totalHandover.toLocaleString('en-IN')}`,
         metricLabel: 'Treasury Handover',
@@ -186,9 +207,12 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
         subtitle: 'Daily Card',
         icon: Share2,
         color: '#0284c7', // Sky-600
-        activeFill: '#0284c7',
-        defaultFill: '#ffffff',
-        defaultStroke: '#cbd5e1',
+        defaultFill: '#e0f2fe', // Light sky before tap
+        defaultStroke: '#7dd3fc',
+        defaultTextColor: '#0c4a6e',
+        defaultSubtitleColor: '#0284c7',
+        defaultIconColor: '#0284c7',
+        activeFill: '#0284c7', // Solid Dark Sky on tap
         glowColor: 'rgba(2, 132, 199, 0.45)',
         metric: 'Daily Summary',
         metricLabel: 'WhatsApp & Card',
@@ -358,22 +382,22 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
               >
                 {/* SVG Icon centered at top of text group */}
                 <g 
-                  transform="translate(-10, -26)"
+                  transform="translate(-11, -28)"
                   style={{
-                    color: isHovered ? '#ffffff' : item.color,
+                    color: isHovered ? '#ffffff' : item.defaultIconColor,
                     transition: 'color 0.22s ease',
                   }}
                 >
-                  <IconComponent size={20} strokeWidth={2.2} />
+                  <IconComponent size={22} strokeWidth={2.4} />
                 </g>
 
-                {/* Primary Title */}
+                {/* Primary Title - Larger font size as requested */}
                 <text
                   x={0}
-                  y={6}
+                  y={7}
                   textAnchor="middle"
-                  fill={isHovered ? '#ffffff' : '#0f172a'}
-                  className="font-black select-none text-[12px] tracking-tight"
+                  fill={isHovered ? '#ffffff' : item.defaultTextColor}
+                  className="font-black select-none text-[13.5px] tracking-tight"
                   style={{
                     fontWeight: 900,
                     letterSpacing: '-0.02em',
@@ -383,15 +407,15 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
                   {item.title}
                 </text>
 
-                {/* Subtitle / Metadata */}
+                {/* Subtitle / Metadata - Larger font size as requested */}
                 <text
                   x={0}
-                  y={20}
+                  y={23}
                   textAnchor="middle"
-                  fill={isHovered ? 'rgba(255,255,255,0.92)' : '#475569'}
-                  className="font-bold select-none text-[9.5px]"
+                  fill={isHovered ? 'rgba(255,255,255,0.95)' : item.defaultSubtitleColor}
+                  className="font-extrabold select-none text-[10.5px]"
                   style={{
-                    fontWeight: 700,
+                    fontWeight: 800,
                     textTransform: 'uppercase',
                     letterSpacing: '0.04em',
                     transition: 'fill 0.22s ease',
@@ -426,10 +450,10 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
           className="w-[43%] h-[43%] rounded-full bg-white/95 backdrop-blur-xs flex flex-col items-center justify-center p-3 text-center pointer-events-auto select-none transition-all duration-300"
         >
           {activeItem ? (
-            /* Hovered Slice Details */
+            /* Hovered / Tapped Slice Details - 'click to open' removed as requested */
             <div 
               key={activeItem.id} 
-              className="flex flex-col items-center justify-center space-y-1 animate-in zoom-in-90 fade-in duration-200"
+              className="flex flex-col items-center justify-center space-y-1.5 animate-in zoom-in-90 fade-in duration-200"
             >
               <div 
                 className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-md transition-colors"
@@ -438,7 +462,7 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
                   color: '#ffffff'
                 }}
               >
-                <activeItem.icon size={20} className="animate-pulse" />
+                <activeItem.icon size={22} className="animate-pulse" />
               </div>
 
               <div 
@@ -451,18 +475,6 @@ export const DonutOverviewMenu: React.FC<DonutOverviewMenuProps> = ({
               <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider line-clamp-1">
                 {activeItem.metricLabel || activeItem.title}
               </span>
-
-              <button
-                type="button"
-                onClick={activeItem.onClick}
-                className="inline-flex items-center gap-1 text-[9.5px] font-black text-white px-3.5 py-1 rounded-full shadow-md active:scale-95 transition-all cursor-pointer mt-0.5"
-                style={{ 
-                  backgroundColor: activeItem.color
-                }}
-              >
-                <span>Click to open</span>
-                <span>→</span>
-              </button>
             </div>
           ) : (
             /* Default Center: Animated Number of Coupons (Matches user image center card) */

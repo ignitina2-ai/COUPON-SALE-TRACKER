@@ -1958,9 +1958,14 @@ export default function App() {
               <Menu size={22} />
             </button>
             <button 
-              onClick={() => setActiveTab('dashboard')}
+              onClick={() => {
+                setActiveTab('dashboard');
+                setTimeout(() => {
+                  document.getElementById('overview-menu-dial-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 80);
+              }}
               className="flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all duration-150 text-left text-slate-950 bg-transparent border-0 min-w-0 cursor-pointer p-1 -m-1 rounded-xl hover:bg-slate-50/80 active:bg-slate-100 select-none"
-              title="Go to Dashboard"
+              title="Go to Overview Menu Dial"
             >
               {resolvedLogo ? (
                 <img src={resolvedLogo} alt="Logo" className="w-6 h-6 object-contain shrink-0" referrerPolicy="no-referrer" />

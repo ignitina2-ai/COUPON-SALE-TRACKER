@@ -357,11 +357,30 @@ const Dashboard: React.FC<DashboardProps> = ({
     <div className="space-y-6 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
         <div className="hidden md:block">
-          <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">Overview</h2>
-          
+          <button
+            type="button"
+            onClick={() => document.getElementById('overview-menu-dial-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+            className="text-left group cursor-pointer flex items-center gap-2.5 p-1 -m-1 rounded-xl hover:bg-slate-50 transition-all select-none"
+            title="Tap to focus Overview Menu Dial"
+          >
+            <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase group-hover:text-blue-600 transition-colors">Overview</h2>
+            <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full group-hover:bg-blue-600 group-hover:text-white transition-all shadow-xs">
+              Menu Dial ↓
+            </span>
+          </button>
         </div>
         <div className="flex items-center justify-between gap-1.5 w-full md:w-auto">
           <div className="flex items-center justify-between md:justify-start gap-1.5 w-full md:w-auto">
+            {/* Mobile Header Dial shortcut */}
+            <button
+              type="button"
+              onClick={() => document.getElementById('overview-menu-dial-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+              className="md:hidden flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 shadow-xs active:scale-95 shrink-0"
+              title="Focus Overview Menu Dial"
+            >
+              <Ticket size={12} className="text-blue-600" />
+              <span>Dial</span>
+            </button>
             <div className="flex items-center gap-0.5 md:gap-1 bg-slate-100 p-0.5 md:p-1 rounded-xl md:rounded-2xl border border-slate-200 shadow-inner shrink-0">
               <button
                 onClick={() => setTimeframe('overall')}
@@ -422,7 +441,10 @@ const Dashboard: React.FC<DashboardProps> = ({
       {/* Mobile-only Share Daily Report button moved to between Each UPI Receipts and Add New Sale */}
 
       {/* Donut-Shaped Overview Menu Card (Requested by user) */}
-      <div className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200/90 relative overflow-hidden space-y-3">
+      <div 
+        id="overview-menu-dial-container" 
+        className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200/90 relative overflow-hidden space-y-3 scroll-mt-6 sm:scroll-mt-10"
+      >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black shrink-0 border border-blue-100">
