@@ -136,7 +136,7 @@ export default function App() {
 
   const isPrimaryAdminEmail = (email?: string | null) => {
     const e = email?.toLowerCase().trim();
-    return e === 'ignitina2@gmail.com' || e === 'stcasimircharitabletrust@gmail.com';
+    return e === 'ignitina2@gmail.com';
   };
 
   const isPrimaryAdmin = isPrimaryAdminEmail(user?.email);
@@ -299,9 +299,9 @@ export default function App() {
 
       const email = firebaseUser.email?.toLowerCase().trim() || '';
 
-      // Direct access for primary trust administrators
-      if (email === 'ignitina2@gmail.com' || email === 'stcasimircharitabletrust@gmail.com') {
-        const dName = firebaseUser.displayName || (email === 'stcasimircharitabletrust@gmail.com' ? 'Trust Administrator' : 'Primary Administrator');
+      // Direct access for primary trust administrator
+      if (email === 'ignitina2@gmail.com') {
+        const dName = firebaseUser.displayName || 'Primary Administrator';
         setUser({
           uid: firebaseUser.uid,
           email: firebaseUser.email,

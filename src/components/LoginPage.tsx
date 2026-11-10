@@ -134,7 +134,7 @@ export default function LoginPage({
                 <div>
                   <p className="text-xs font-black text-amber-300 uppercase">Google Error 403: Add to Test Users</p>
                   <p className="text-[10px] text-amber-200/90 leading-relaxed mt-0.5">
-                    The app is currently in Google Cloud Testing mode. To sign in with <strong className="text-white">stcasimircharitabletrust@gmail.com</strong> or helper accounts, add them as test users:
+                    The app is currently in Google Cloud Testing mode. To sign in with helper or team member accounts, add them as test users:
                   </p>
                 </div>
               </div>

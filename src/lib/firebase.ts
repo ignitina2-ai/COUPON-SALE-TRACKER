@@ -76,7 +76,7 @@ export const authGoogleProvider = new GoogleAuthProvider();
 export const googleProvider = authGoogleProvider; // Backward compatibility alias
 
 // 2. Specialized provider with Google Drive & Google Sheets scopes.
-// Used specifically when connecting or authorizing Drive sync with stcasimircharitabletrust@gmail.com
+// Used when connecting or authorizing Drive / Sheets live sync
 export const driveGoogleProvider = new GoogleAuthProvider();
 driveGoogleProvider.addScope('https://www.googleapis.com/auth/drive');
 driveGoogleProvider.addScope('https://www.googleapis.com/auth/spreadsheets');

@@ -40,10 +40,8 @@ export function AdminSettings({
   const [perms, setPerms] = useState({ canAdd: true, canEdit: true, canDelete: false });
   const [isAdding, setIsAdding] = useState(false);
 
-  // Strict check to ensure the primary trust administrators have full edit and administrative controls over helpers
-  const isPrimary = 
-    user?.email?.toLowerCase().trim() === 'ignitina2@gmail.com' || 
-    user?.email?.toLowerCase().trim() === 'stcasimircharitabletrust@gmail.com';
+  // Strict check to ensure the primary trust administrator has full edit and administrative controls over helpers
+  const isPrimary = user?.email?.toLowerCase().trim() === 'ignitina2@gmail.com';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +53,8 @@ export function AdminSettings({
       return;
     }
 
-    if (emailToRegister === 'ignitina2@gmail.com' || emailToRegister === 'stcasimircharitabletrust@gmail.com') {
-      showNotification('error', 'This email is already recognized as a Trust Super Administrator.');
+    if (emailToRegister === 'ignitina2@gmail.com') {
+      showNotification('error', 'This email is already recognized as the Trust Super Administrator.');
       return;
     }
 
@@ -122,7 +120,7 @@ export function AdminSettings({
             <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Authorized Team Status</h4>
             <div className="font-mono text-[9px] text-slate-500 font-bold flex flex-wrap gap-1.5">
               <span className="inline-flex items-center gap-1 bg-blue-50/50 text-blue-700 border border-blue-100/50 px-2.5 py-0.5 rounded-lg">
-                Super Admins: ignitina2@gmail.com & stcasimircharitabletrust@gmail.com
+                Super Admin: ignitina2@gmail.com
               </span>
               <span className="inline-flex items-center gap-1 bg-slate-100/60 text-slate-700 border border-slate-200/40 px-2.5 py-0.5 rounded-lg">
                 Authorized helpers: {allowedUsers.length}
