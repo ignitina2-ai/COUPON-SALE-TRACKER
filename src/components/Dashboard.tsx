@@ -30,7 +30,6 @@ import { Transaction, Sponsor, IncomeExpense, SecretaryHandover, PaymentMethod, 
 import { cn } from '@/lib/utils';
 import TransactionList from './TransactionList';
 import TransactionForm from './TransactionForm';
-import DonutOverviewMenu from './DonutOverviewMenu';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -72,7 +71,6 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [timeframe, setTimeframe] = useState<'overall' | 'today'>('overall');
   const [currentTimeStr, setCurrentTimeStr] = useState<string>('');
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
-  const [quickNavLayout, setQuickNavLayout] = useState<'donut' | 'grid'>('donut');
 
   const getTodayFormattedIST = (dateObj: Date = new Date()) => {
     const datePart = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(dateObj);
@@ -357,30 +355,10 @@ const Dashboard: React.FC<DashboardProps> = ({
     <div className="space-y-6 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
         <div className="hidden md:block">
-          <button
-            type="button"
-            onClick={() => document.getElementById('overview-menu-dial-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-            className="text-left group cursor-pointer flex items-center gap-2.5 p-1 -m-1 rounded-xl hover:bg-slate-50 transition-all select-none"
-            title="Tap to focus Overview Menu Dial"
-          >
-            <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase group-hover:text-blue-600 transition-colors">Overview</h2>
-            <span className="text-[10px] font-extrabold text-blue-600 bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded-full group-hover:bg-blue-600 group-hover:text-white transition-all shadow-xs">
-              Menu Dial ↓
-            </span>
-          </button>
+          <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">Overview</h2>
         </div>
         <div className="flex items-center justify-between gap-1.5 w-full md:w-auto">
           <div className="flex items-center justify-between md:justify-start gap-1.5 w-full md:w-auto">
-            {/* Mobile Header Dial shortcut */}
-            <button
-              type="button"
-              onClick={() => document.getElementById('overview-menu-dial-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-              className="md:hidden flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200 shadow-xs active:scale-95 shrink-0"
-              title="Focus Overview Menu Dial"
-            >
-              <Ticket size={12} className="text-blue-600" />
-              <span>Dial</span>
-            </button>
             <div className="flex items-center gap-0.5 md:gap-1 bg-slate-100 p-0.5 md:p-1 rounded-xl md:rounded-2xl border border-slate-200 shadow-inner shrink-0">
               <button
                 onClick={() => setTimeframe('overall')}
@@ -440,108 +418,53 @@ const Dashboard: React.FC<DashboardProps> = ({
 
       {/* Mobile-only Share Daily Report button moved to between Each UPI Receipts and Add New Sale */}
 
-      {/* Donut-Shaped Overview Menu Card (Requested by user) */}
-      <div 
-        id="overview-menu-dial-container" 
-        className="bg-white rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200/90 relative overflow-hidden space-y-3 scroll-mt-6 sm:scroll-mt-10"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-black shrink-0 border border-blue-100">
-              <Ticket size={17} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-black text-slate-800 text-xs sm:text-sm uppercase tracking-wider">
-                  Overview Menu Dial
-                </h3>
-                <span className="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.2 rounded-full">
-                  Interactive
-                </span>
-              </div>
-              
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1.5 self-end sm:self-center">
-            <button
-              type="button"
-              onClick={() => setQuickNavLayout(l => l === 'donut' ? 'grid' : 'donut')}
-              className="text-[10px] font-extrabold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 active:scale-95 px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1.5"
-            >
-              <span>{quickNavLayout === 'donut' ? 'Switch to Grid' : 'Switch to Donut Dial'}</span>
-            </button>
-          </div>
-        </div>
-
-        {quickNavLayout === 'donut' ? (
-          <div className="py-2 sm:py-4 flex flex-col items-center justify-center">
-            <DonutOverviewMenu
-              totalCoupons={totalCoupons}
-              totalBooks={totalBooks}
-              timeframe={timeframe}
-              totalSales={totalSales}
-              totalCredit={totalCredit}
-              totalHandover={totalHandover}
-              txnCount={(filteredTransactionsList || []).length}
-              canShareReport={permissions?.canShareReport !== false}
-              onOpenShareReport={() => setIsShareModalOpen(true)}
-              onScrollToAddSale={() => {
-                const el = document.getElementById('dashboard-add-sale-form-container');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              onNavigateTab={(tab) => (window as any).setActiveTab?.(tab)}
-            />
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 md:gap-3 pt-1">
-            <button 
-              onClick={() => {
-                const el = document.getElementById('dashboard-add-sale-form-container');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="flex flex-col items-center justify-center p-3 md:p-4 bg-blue-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-blue-700 transition-all active:scale-95 cursor-pointer text-center"
-            >
-              <PlusCircle className="mb-1.5 w-5 h-5" />
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Add Sale</span>
-            </button>
-            <button 
-              onClick={() => (window as any).setActiveTab?.('transactions')}
-              className="flex flex-col items-center justify-center p-3 md:p-4 bg-slate-800 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-slate-900 transition-all active:scale-95 cursor-pointer text-center"
-            >
-              <History className="mb-1.5 w-5 h-5" />
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Sales History</span>
-            </button>
-            <button 
-              onClick={() => (window as any).setActiveTab?.('credit')}
-              className="flex flex-col items-center justify-center p-3 md:p-4 bg-red-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-red-700 transition-all active:scale-95 cursor-pointer text-center"
-            >
-              <CreditCard className="mb-1.5 w-5 h-5" />
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Credit</span>
-            </button>
-            <button 
-              onClick={() => (window as any).setActiveTab?.('prize-collection')}
-              className="flex flex-col items-center justify-center p-3 md:p-4 bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-xl md:rounded-2xl shadow-md hover:from-amber-600 hover:to-amber-700 transition-all active:scale-95 cursor-pointer text-center"
-            >
-              <Gift className="mb-1.5 w-5 h-5" />
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Prize Collection</span>
-            </button>
-            <button 
-              onClick={() => (window as any).setActiveTab?.('income-expense')}
-              className="flex flex-col items-center justify-center p-3 md:p-4 bg-indigo-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-indigo-700 transition-all active:scale-95 cursor-pointer text-center"
-            >
-              <TrendingDown className="mb-1.5 w-5 h-5" />
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Income & Expense</span>
-            </button>
-            <button 
-              onClick={() => (window as any).setActiveTab?.('secretary-handover')}
-              className="flex flex-col items-center justify-center p-3 md:p-4 bg-emerald-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-emerald-700 transition-all active:scale-95 cursor-pointer text-center"
-            >
-              <Users className="mb-1.5 w-5 h-5" />
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Treasury Handover</span>
-            </button>
-          </div>
-        )}
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 md:gap-3">
+        <button 
+          onClick={() => {
+            const el = document.getElementById('dashboard-add-sale-form-container');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+          className="flex flex-col items-center justify-center p-3 md:p-4 bg-blue-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-blue-700 transition-all active:scale-95 cursor-pointer text-center"
+        >
+          <PlusCircle className="mb-1.5 w-5 h-5" />
+          <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Add Sale</span>
+        </button>
+        <button 
+          onClick={() => (window as any).setActiveTab?.('transactions')}
+          className="flex flex-col items-center justify-center p-3 md:p-4 bg-slate-800 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-slate-900 transition-all active:scale-95 cursor-pointer text-center"
+        >
+          <History className="mb-1.5 w-5 h-5" />
+          <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Sales History</span>
+        </button>
+        <button 
+          onClick={() => (window as any).setActiveTab?.('credit')}
+          className="flex flex-col items-center justify-center p-3 md:p-4 bg-red-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-red-700 transition-all active:scale-95 cursor-pointer text-center"
+        >
+          <CreditCard className="mb-1.5 w-5 h-5" />
+          <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Credit</span>
+        </button>
+        <button 
+          onClick={() => (window as any).setActiveTab?.('prize-collection')}
+          className="flex flex-col items-center justify-center p-3 md:p-4 bg-gradient-to-br from-amber-500 to-amber-600 text-white rounded-xl md:rounded-2xl shadow-md hover:from-amber-600 hover:to-amber-700 transition-all active:scale-95 cursor-pointer text-center"
+        >
+          <Gift className="mb-1.5 w-5 h-5" />
+          <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Prize Collection</span>
+        </button>
+        <button 
+          onClick={() => (window as any).setActiveTab?.('income-expense')}
+          className="flex flex-col items-center justify-center p-3 md:p-4 bg-indigo-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-indigo-700 transition-all active:scale-95 cursor-pointer text-center"
+        >
+          <TrendingDown className="mb-1.5 w-5 h-5" />
+          <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Income & Expense</span>
+        </button>
+        <button 
+          onClick={() => (window as any).setActiveTab?.('secretary-handover')}
+          className="flex flex-col items-center justify-center p-3 md:p-4 bg-emerald-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-emerald-700 transition-all active:scale-95 cursor-pointer text-center"
+        >
+          <Users className="mb-1.5 w-5 h-5" />
+          <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Treasury Handover</span>
+        </button>
       </div>
 
       {/* SECTION 1: Coupon Sales Ledger */}
