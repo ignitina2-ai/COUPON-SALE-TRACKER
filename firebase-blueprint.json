@@ -119,6 +119,17 @@
         "device": { "type": "string", "description": "Mobile or Desktop" }
       },
       "required": ["id", "uid", "email", "lastActive"]
+    },
+    "PrizeCollectionState": {
+      "title": "PrizeCollectionState",
+      "description": "Shared real-time tracking and received donation state for lucky draw prizes",
+      "type": "object",
+      "properties": {
+        "tracking": { "type": "object", "description": "Map of prize numbers to status and trust cost" },
+        "receivedAmounts": { "type": "array", "description": "Cash donations received for prizes" },
+        "lastUpdated": { "type": "string", "description": "Timestamp of latest update" },
+        "updatedBy": { "type": "string", "description": "User email who made the update" }
+      }
     }
   },
   "firestore": {
@@ -149,6 +160,10 @@
     "/activeSessions/{sessionId}": {
       "schema": "ActiveSession",
       "description": "Active user sessions currently logged in"
+    },
+    "/prizeCollection/{docId}": {
+      "schema": "PrizeCollectionState",
+      "description": "Real-time state for lucky draw prizes and donations"
     }
   }
 }

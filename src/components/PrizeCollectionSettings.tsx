@@ -44,6 +44,7 @@ import { getCachedAccessToken, setCachedAccessToken, driveGoogleProvider, auth, 
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { DEFAULT_WEBHOOK_URL, DriveSyncConfig, GOOGLE_APPS_SCRIPT_CODE } from '@/lib/googleDriveSheets';
+import { sendNotification } from '@/lib/notifications';
 
 const STORAGE_KEY_TRACKING = 'stCasimirLuckyDraw2026_tracking';
 const STORAGE_KEY_COLLECTED = 'stCasimirLuckyDraw2026_collected';
@@ -648,6 +649,10 @@ export default function PrizeCollectionSettings({ setActiveTab }: PrizeCollectio
       setRestoreMessage({
         type: 'success',
         text: `Data successfully restored (${mode === 'merge' ? 'Merged with existing data' : 'Clean restored from backup'}). All records preserved safely.`
+      });
+
+      sendNotification('Prize Collection Restored', {
+        body: `Data successfully restored (${mode === 'merge' ? 'Merged' : 'Clean overwritten'})`
       });
 
       // Clear success notification after 5s

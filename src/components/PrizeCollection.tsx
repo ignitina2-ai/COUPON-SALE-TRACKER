@@ -45,6 +45,7 @@ import { getCachedAccessToken, setCachedAccessToken, auth, db, driveGoogleProvid
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { DEFAULT_WEBHOOK_URL, DriveSyncConfig } from '@/lib/googleDriveSheets';
+import { sendNotification } from '@/lib/notifications';
 
 const STORAGE_KEY_TRACKING = 'stCasimirLuckyDraw2026_tracking';
 const STORAGE_KEY_COLLECTED = 'stCasimirLuckyDraw2026_collected';
@@ -400,6 +401,9 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
             message: 'Google Sheet-ലേക്ക് സമ്മാന വിവരങ്ങൾ (PRIZE COLLECTION) വിജയകരമായി അപ്‌ഡേറ്റ് ചെയ്തു!'
           });
           setTimeout(() => setSyncToast(null), 4000);
+          sendNotification('Google Sheet Synced', {
+            body: 'Prize Collection records updated in Google Sheet'
+          });
         }
       } else {
         if (showNotification) {
@@ -427,6 +431,8 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
   // Status Change Handler
   const handleStatusChange = (prizeNo: string, newStatus: 'PENDING' | 'SPONSOR' | 'TRUST') => {
     const current = prizeTracking[prizeNo] || { status: 'PENDING', amount: 0 };
+    if (current.status === newStatus) return;
+
     const updated = {
       ...prizeTracking,
       [prizeNo]: {
@@ -435,6 +441,22 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
       }
     };
     saveTrackingState(updated);
+
+    const prize = prizes.find(p => p.prize_no === prizeNo);
+    const prizeItemName = prize ? `${prize.prize_no}. ${prize.prize_item}` : `Prize #${prizeNo}`;
+    let statusDesc = '';
+    if (newStatus === 'SPONSOR') {
+      const sponsorInfo = prize?.display_sponsor ? ` (Sponsor: ${prize.display_sponsor})` : '';
+      statusDesc = `Marked as SPONSOR${sponsorInfo}`;
+    } else if (newStatus === 'TRUST') {
+      statusDesc = `Marked as TRUST (Purchased)`;
+    } else {
+      statusDesc = `Reverted to PENDING`;
+    }
+
+    sendNotification('Prize Collection Updated', {
+      body: `${prizeItemName}: ${statusDesc}`
+    });
   };
 
   // Trust Cost Input Handler
@@ -442,6 +464,8 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
     const num = parseFloat(costStr);
     const validAmount = isNaN(num) || num < 0 ? 0 : num;
     const current = prizeTracking[prizeNo] || { status: 'TRUST', amount: 0 };
+    if (current.amount === validAmount) return;
+
     const updated = {
       ...prizeTracking,
       [prizeNo]: {
@@ -450,6 +474,12 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
       }
     };
     saveTrackingState(updated);
+
+    const prize = prizes.find(p => p.prize_no === prizeNo);
+    const prizeItemName = prize ? `${prize.prize_no}. ${prize.prize_item}` : `Prize #${prizeNo}`;
+    sendNotification('Prize Cost Updated', {
+      body: `${prizeItemName} Trust Cost set to ₹${validAmount.toLocaleString('en-IN')}`
+    });
   };
 
   // Add Received Amount
@@ -470,13 +500,24 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
     saveReceivedState(updated);
     setNewReceivedName('');
     setNewReceivedAmount('');
+
+    sendNotification('Prize Donation Received', {
+      body: `₹${amount.toLocaleString('en-IN')} received from ${name}`
+    });
   };
 
   // Delete Received Amount
   const handleDeleteReceivedAmount = (index: number) => {
+    const target = receivedAmounts[index];
     const updated = [...receivedAmounts];
     updated.splice(index, 1);
     saveReceivedState(updated);
+
+    if (target) {
+      sendNotification('Prize Donation Removed', {
+        body: `Removed ₹${(Number(target.amount) || 0).toLocaleString('en-IN')} (${target.name})`
+      });
+    }
   };
 
   // Categories extraction
@@ -630,10 +671,14 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
             setTickerSpeed(Number(parsed.tickerSpeed));
             localStorage.setItem(STORAGE_KEY_SPEED, parsed.tickerSpeed.toString());
           }
-          alert("Data restored successfully!");
+          sendNotification('Prize Collection Restored', {
+            body: 'Prize records restored successfully from backup file'
+          });
         }
       } catch (err: any) {
-        alert("Error importing file: " + err.message);
+        sendNotification('Prize Restore Failed', {
+          body: err.message || 'Error importing file'
+        });
       }
       e.target.value = '';
     };
@@ -648,6 +693,10 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
     });
     saveTrackingState(newTracking);
     setShowConfirmReset(false);
+
+    sendNotification('Prize Collection Reset', {
+      body: 'All prize collection statuses have been reset to PENDING'
+    });
   };
 
   // Export PDF Report

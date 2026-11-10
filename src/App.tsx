@@ -752,6 +752,39 @@ export default function App() {
         console.warn("Drive config sync notice:", err);
       });
       activeSubscriptions.push(unsubDriveConfig);
+
+      // 8. Prize Collection Realtime Cloud Listener & Multi-Device Notification
+      let isInitialPrizeState = true;
+      let lastRemotePrizeUpdate: string | null = null;
+      const unsubPrizeCollectionState = onSnapshot(doc(db, 'prizeCollection', 'state'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const hasPendingWrites = snap.metadata.hasPendingWrites;
+          const currentTimestamp = data?.lastUpdated;
+          const updatedBy = data?.updatedBy || '';
+          const currentEmail = auth.currentUser?.email || '';
+
+          // Only trigger notification for remote updates (not our own local pending writes)
+          if (!isInitialPrizeState && !hasPendingWrites && currentTimestamp && currentTimestamp !== lastRemotePrizeUpdate) {
+            lastRemotePrizeUpdate = currentTimestamp;
+            if (!currentEmail || updatedBy.toLowerCase() !== currentEmail.toLowerCase()) {
+              const authorLabel = updatedBy ? ` by ${updatedBy}` : '';
+              sendNotification('Prize Collection Updated', {
+                body: `Prize records updated in real-time${authorLabel}`,
+              });
+            }
+          }
+          if (currentTimestamp) {
+            lastRemotePrizeUpdate = currentTimestamp;
+          }
+        }
+        if (isInitialPrizeState) {
+          isInitialPrizeState = false;
+        }
+      }, (err) => {
+        console.warn("Prize Collection state sync notice:", err);
+      });
+      activeSubscriptions.push(unsubPrizeCollectionState);
     }
 
     return () => {
