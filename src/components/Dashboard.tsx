@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   IndianRupee, 
   CreditCard, 
@@ -71,6 +72,17 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [timeframe, setTimeframe] = useState<'overall' | 'today'>('overall');
   const [currentTimeStr, setCurrentTimeStr] = useState<string>('');
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (isShareModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isShareModalOpen]);
 
   const getTodayFormattedIST = (dateObj: Date = new Date()) => {
     const datePart = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(dateObj);
@@ -402,15 +414,17 @@ const Dashboard: React.FC<DashboardProps> = ({
             <button 
               disabled={permissions?.canShareReport === false}
               onClick={() => permissions?.canShareReport !== false && setIsShareModalOpen(true)}
+              title="Share Report"
               className={cn(
-                "hidden md:flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-wider transition-all cursor-pointer shrink-0",
+                "flex items-center gap-1.5 px-2.5 py-1 md:px-4 md:py-2 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-wider transition-all cursor-pointer shrink-0",
                 permissions?.canShareReport === false
                   ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-65"
                   : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white shadow-md shadow-indigo-600/20"
               )}
             >
               <Share2 size={13} className={permissions?.canShareReport === false ? "" : "animate-pulse"} />
-              <span>Share Report</span>
+              <span className="hidden sm:inline">Share Report</span>
+              <span className="sm:hidden">Share</span>
             </button>
           </div>
         </div>
@@ -607,8 +621,11 @@ const Dashboard: React.FC<DashboardProps> = ({
         />
       </div>
 
-      {isShareModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+      {isShareModalOpen && typeof document !== 'undefined' && createPortal(
+        <div 
+          onClick={(e) => { if (e.target === e.currentTarget) setIsShareModalOpen(false); }}
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[99999] animate-in fade-in duration-200"
+        >
           <div className="bg-white rounded-2xl md:rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl border border-slate-100 transform scale-100 animate-in zoom-in duration-300">
             <div className="text-center mb-6">
               <h2 className="mx-auto w-12 h-12 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mb-3">
@@ -650,7 +667,8 @@ const Dashboard: React.FC<DashboardProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
