@@ -23,7 +23,7 @@ export const LogoSettings: React.FC<LogoSettingsProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const currentLogo = appData.logo || appData.logoDesktop || appData.logoMobile || '';
 

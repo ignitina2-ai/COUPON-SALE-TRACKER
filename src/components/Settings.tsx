@@ -90,6 +90,7 @@ const Settings: React.FC<SettingsProps> = ({
   const [userToRevoke, setUserToRevoke] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<SettingsTab>('all');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isFirebaseExpanded, setIsFirebaseExpanded] = useState(false);
 
   const showNotification = (type: 'success' | 'error', message: string) => {
     setNotification({ type, message });
@@ -242,11 +243,12 @@ const Settings: React.FC<SettingsProps> = ({
           </div>
 
           {/* Simple, Clean Google Firebase Cloud Sync Card */}
-          <div id="settings-firebase-sync-section" className="bg-white p-6 md:p-7 rounded-3xl border border-slate-100 shadow-sm space-y-6 text-left">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          {/* Simple, Clean Google Firebase Cloud Sync Card */}
+          <div id="settings-firebase-sync-section" className="bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6 text-left">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-3.5">
                 <div className={cn(
-                  "p-3 rounded-2xl shrink-0 border",
+                  "p-2.5 rounded-2xl shrink-0 border",
                   user && !user.isLocal 
                     ? "bg-emerald-50 text-emerald-600 border-emerald-100" 
                     : user && user.isLocal 
@@ -254,104 +256,169 @@ const Settings: React.FC<SettingsProps> = ({
                       : "bg-slate-50 text-slate-400 border-slate-100"
                 )}>
                   {user && !user.isLocal ? (
-                    <Cloud size={22} className="text-emerald-600" />
+                    <Cloud size={20} className="text-emerald-600" />
                   ) : (
-                    <CloudOff size={22} />
+                    <CloudOff size={20} />
                   )}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 leading-tight">Google Firebase Cloud Sync</h3>
-                  <p className="text-xs text-slate-500 font-normal mt-0.5">
+                  <h3 className="text-sm font-black text-slate-900 tracking-tight uppercase leading-tight">
+                    Google Firebase Cloud Sync
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
                     Real-time cloud database synchronization and backup
                   </p>
                 </div>
               </div>
 
-              {/* Login / Disconnect Button */}
-              <div className="shrink-0 flex items-center">
-                {user && !user.isLocal ? (
-                  <button
-                    onClick={onGoogleLogout}
-                    className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm border border-slate-200"
-                  >
-                    <LogOut size={14} />
-                    <span>Disconnect Google Sync</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={onGoogleLogin}
-                    disabled={isLoggingIn}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer disabled:opacity-50 shadow-sm"
-                  >
-                    {isLoggingIn ? (
-                      <>
-                        <RefreshCw size={14} className="animate-spin" />
-                        <span>Connecting Account...</span>
-                      </>
-                    ) : (
-                      <>
-                        <LogIn size={14} />
-                        <span>Sync with Google</span>
-                      </>
-                    )}
-                  </button>
-                )}
+              {/* Toggle Switch */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">
+                  {isFirebaseExpanded ? "Setup open" : "Setup hidden"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsFirebaseExpanded(!isFirebaseExpanded)}
+                  className={cn(
+                    "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out shrink-0 cursor-pointer shadow-inner",
+                    isFirebaseExpanded ? "bg-blue-600" : "bg-slate-300"
+                  )}
+                  title={isFirebaseExpanded ? "Collapse Firebase Settings" : "Expand Firebase Settings"}
+                >
+                  <div className={cn(
+                    "w-4 h-4 bg-white rounded-full transition-transform duration-200 ease-in-out shadow-md",
+                    isFirebaseExpanded ? "translate-x-6" : "translate-x-0"
+                  )} />
+                </button>
               </div>
             </div>
 
-            {/* Cloud User Profile & Status Details */}
-            {user ? (
-              <div className={cn(
-                "p-4 rounded-2xl text-xs border space-y-4",
-                user.isLocal 
-                  ? "bg-amber-50/60 border-amber-200/70 text-amber-950" 
-                  : "bg-slate-50/70 border-slate-200/60 text-slate-800"
-              )}>
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <img 
-                      src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email || 'Admin')}&background=0284c7&color=fff`} 
-                      alt="Profile Avatar" 
-                      referrerPolicy="no-referrer"
-                      className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
-                    />
-                    <div>
-                      <p className="font-bold text-slate-900 text-sm">{user.displayName || 'Authorized Admin / Helper'}</p>
-                      <p className="text-xs text-slate-500">{user.email || 'No email provided'}</p>
-                    </div>
+            {!isFirebaseExpanded ? (
+              <div 
+                onClick={() => setIsFirebaseExpanded(true)}
+                className="p-4 bg-slate-50/75 hover:bg-slate-50 border border-slate-100 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors animate-in fade-in duration-300 text-left font-sans cursor-pointer"
+              >
+                <div className="space-y-1.5 w-full sm:w-auto">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Cloud Connection Status</h4>
+                  <div className="flex flex-wrap items-center gap-2 font-mono text-[9px] font-bold">
+                    <span className={cn(
+                      "inline-flex items-center gap-1.5 border px-2 py-0.5 rounded-lg",
+                      user && !user.isLocal
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : user && user.isLocal
+                          ? "bg-amber-50 text-amber-700 border-amber-200"
+                          : "bg-slate-100 text-slate-500 border-slate-200"
+                    )}>
+                      {user && !user.isLocal ? "✓ Firestore Live Connected" : user && user.isLocal ? "Local Bypass Mode" : "Offline"}
+                    </span>
+                    {user?.email && (
+                      <span className="text-slate-600 font-sans font-medium text-[11px]">
+                        Account: {user.email}
+                      </span>
+                    )}
                   </div>
-
-                  <span className={cn(
-                    "px-3 py-1 rounded-lg text-xs font-semibold self-start sm:self-center",
-                    user.isLocal ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
-                  )}>
-                    {user.isLocal ? "Local Mode" : "Firestore Live Connected"}
-                  </span>
                 </div>
-
-                {user.isLocal ? (
-                  <p className="text-xs text-amber-900 leading-relaxed bg-white p-3 rounded-xl border border-amber-200/80">
-                    ⚠️ <strong>You are browsing in Local Bypass Mode.</strong> Your added entries, transactions, and settings updates are currently locked to your browser's private local state. To merge this data and enable multi-user real-time syncing, click the <strong>Sync with Google</strong> button above to link this device.
-                  </p>
-                ) : (
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-200/60">
-                    <p className="text-xs text-slate-600">
-                      If you notice different totals on mobile or another screen, run a force sync to publish local changes.
-                    </p>
-                    <button
-                      onClick={handleForceSync}
-                      disabled={isSyncing}
-                      className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-xs transition-all active:scale-95 border border-blue-200/70 shrink-0 cursor-pointer disabled:opacity-50"
-                    >
-                      <RefreshCw size={13} className={isSyncing ? "animate-spin" : ""} />
-                      <span>{isSyncing ? 'Syncing...' : 'Force Database Sync'}</span>
-                    </button>
-                  </div>
-                )}
+                <span className="self-end sm:self-center text-[9px] text-blue-700 font-black uppercase tracking-wider bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-xl">
+                  Click to manage
+                </span>
               </div>
             ) : (
-              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs text-slate-600 leading-relaxed">
-                Connect your Google Account to automatically synchronize sales entries, prize sponsors, treasury handovers, and system settings securely in Google Cloud Firestore.
+              <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-700">Account Sync Controls</h4>
+                    <p className="text-[11px] text-slate-500">
+                      Connect or disconnect your authorized Google workspace account
+                    </p>
+                  </div>
+
+                  {/* Login / Disconnect Button */}
+                  <div className="shrink-0 flex items-center">
+                    {user && !user.isLocal ? (
+                      <button
+                        onClick={onGoogleLogout}
+                        className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-sm border border-slate-200"
+                      >
+                        <LogOut size={14} />
+                        <span>Disconnect Google Sync</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={onGoogleLogin}
+                        disabled={isLoggingIn}
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer disabled:opacity-50 shadow-sm"
+                      >
+                        {isLoggingIn ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" />
+                            <span>Connecting Account...</span>
+                          </>
+                        ) : (
+                          <>
+                            <LogIn size={14} />
+                            <span>Sync with Google</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Cloud User Profile & Status Details */}
+                {user ? (
+                  <div className={cn(
+                    "p-4 rounded-2xl text-xs border space-y-4",
+                    user.isLocal 
+                      ? "bg-amber-50/60 border-amber-200/70 text-amber-950" 
+                      : "bg-slate-50/70 border-slate-200/60 text-slate-800"
+                  )}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <img 
+                          src={user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || user.email || 'Admin')}&background=0284c7&color=fff`} 
+                          alt="Profile Avatar" 
+                          referrerPolicy="no-referrer"
+                          className="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
+                        />
+                        <div>
+                          <p className="font-bold text-slate-900 text-sm">{user.displayName || 'Authorized Admin / Helper'}</p>
+                          <p className="text-xs text-slate-500">{user.email || 'No email provided'}</p>
+                        </div>
+                      </div>
+
+                      <span className={cn(
+                        "px-3 py-1 rounded-lg text-xs font-semibold self-start sm:self-center",
+                        user.isLocal ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"
+                      )}>
+                        {user.isLocal ? "Local Mode" : "Firestore Live Connected"}
+                      </span>
+                    </div>
+
+                    {user.isLocal ? (
+                      <p className="text-xs text-amber-900 leading-relaxed bg-white p-3 rounded-xl border border-amber-200/80">
+                        ⚠️ <strong>You are browsing in Local Bypass Mode.</strong> Your added entries, transactions, and settings updates are currently locked to your browser's private local state. To merge this data and enable multi-user real-time syncing, click the <strong>Sync with Google</strong> button above to link this device.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-200/60">
+                        <p className="text-xs text-slate-600">
+                          If you notice different totals on mobile or another screen, run a force sync to publish local changes.
+                        </p>
+                        <button
+                          onClick={handleForceSync}
+                          disabled={isSyncing}
+                          className="flex items-center justify-center gap-1.5 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold rounded-xl text-xs transition-all active:scale-95 border border-blue-200/70 shrink-0 cursor-pointer disabled:opacity-50"
+                        >
+                          <RefreshCw size={13} className={isSyncing ? "animate-spin" : ""} />
+                          <span>{isSyncing ? 'Syncing...' : 'Force Database Sync'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs text-slate-600 leading-relaxed">
+                    Connect your Google Account to automatically synchronize sales entries, prize sponsors, treasury handovers, and system settings securely in Google Cloud Firestore.
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -4,7 +4,9 @@ import {
   Check, 
   Copy,
   Code2,
-  Zap
+  Zap,
+  FolderSync,
+  FileSpreadsheet
 } from 'lucide-react';
 import { AppData } from '@/types';
 import { cn } from '@/lib/utils';
@@ -60,6 +62,7 @@ export const DriveSheetsSettings: React.FC<DriveSheetsSettingsProps> = ({
   const [isSavingWebhook, setIsSavingWebhook] = useState(false);
   const [justSavedWebhook, setJustSavedWebhook] = useState(false);
   const [isTestingWebhook, setIsTestingWebhook] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     if (driveSyncConfig?.webhookUrl) {
@@ -211,6 +214,71 @@ export const DriveSheetsSettings: React.FC<DriveSheetsSettingsProps> = ({
 
   return (
     <div id="settings-card-drive-sheets" className="bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-sm space-y-6 text-left font-sans">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div className="bg-emerald-50 p-2.5 rounded-2xl text-emerald-600">
+            <FolderSync size={20} />
+          </div>
+          <div>
+            <h3 className="text-sm font-black text-slate-900 tracking-tight uppercase leading-tight">
+              Google Drive &amp; Sheets Live Sync
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
+              Live Google Spreadsheet mirroring &amp; cloud JSON backup
+            </p>
+          </div>
+        </div>
+
+        {/* Toggle Switch */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">
+            {isExpanded ? "Setup open" : "Setup hidden"}
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsExpanded(!isExpanded)}
+            className={cn(
+              "w-12 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out shrink-0 cursor-pointer shadow-inner",
+              isExpanded ? "bg-emerald-600" : "bg-slate-300"
+            )}
+            title={isExpanded ? "Collapse Drive & Sheets Settings" : "Expand Drive & Sheets Settings"}
+          >
+            <div className={cn(
+              "w-4 h-4 bg-white rounded-full transition-transform duration-200 ease-in-out shadow-md",
+              isExpanded ? "translate-x-6" : "translate-x-0"
+            )} />
+          </button>
+        </div>
+      </div>
+
+      {!isExpanded ? (
+        <div 
+          onClick={() => setIsExpanded(true)}
+          className="p-4 bg-slate-50/75 hover:bg-slate-50 border border-slate-100 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors animate-in fade-in duration-300 text-left font-sans cursor-pointer"
+        >
+          <div className="space-y-1.5 w-full sm:w-auto">
+            <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">Drive &amp; Spreadsheet Status</h4>
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[9px] text-slate-500 font-bold">
+              <span className={cn(
+                "inline-flex items-center gap-1.5 border px-2 py-0.5 rounded-lg",
+                isConnected ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+              )}>
+                <FileSpreadsheet size={11} /> {isConnected ? "✓ Cloud Webhook Active" : "No Webhook Saved"}
+              </span>
+              <span className={cn(
+                "inline-flex items-center gap-1.5 border px-2 py-0.5 rounded-lg",
+                isAutoSyncEnabled ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-slate-100 text-slate-500 border-slate-200"
+              )}>
+                Auto-sync: {isAutoSyncEnabled ? "ON" : "OFF"}
+              </span>
+            </div>
+          </div>
+          <span className="self-end sm:self-center text-[9px] text-emerald-700 font-black uppercase tracking-wider bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+            Click to configure
+          </span>
+        </div>
+      ) : (
+        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
       
 
 
@@ -329,6 +397,8 @@ export const DriveSheetsSettings: React.FC<DriveSheetsSettingsProps> = ({
           <span>{isSyncingAll ? "Syncing to Drive & Sheets..." : "Sync All to Google Sheet & Drive"}</span>
         </button>
       </div>
+      </div>
+      )}
 
       {/* Confirmation Modal */}
       {showConfirmModal && (

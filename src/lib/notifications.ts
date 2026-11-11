@@ -34,18 +34,26 @@ export const sendNotification = (title: string, options?: NotificationOptions) =
     ...options
   };
 
-  // Try sending notification via Service Worker first (highly optimized for Android PWA / Chrome status bar)
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.ready
-      .then((registration) => {
-        registration.showNotification(title, notificationOptions);
-      })
-      .catch((err) => {
-        console.warn('Service Worker ready registration failed, trying legacy constructor:', err);
+  // Try sending native notification via Service Worker ONLY IF permission has been explicitly granted
+  try {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready
+          .then((registration) => {
+            if (Notification.permission === 'granted') {
+              return registration.showNotification(title, notificationOptions);
+            }
+          })
+          .catch((err) => {
+            console.warn('Service Worker notification notice:', err);
+            fallbackLegacyNotification(title, notificationOptions);
+          });
+      } else {
         fallbackLegacyNotification(title, notificationOptions);
-      });
-  } else {
-    fallbackLegacyNotification(title, notificationOptions);
+      }
+    }
+  } catch (err) {
+    console.warn('Native notification suppressed:', err);
   }
 
   // Always dispatch a custom event so the in-app toast listener can show it beautifully
