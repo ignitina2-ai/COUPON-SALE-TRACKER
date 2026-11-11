@@ -416,15 +416,14 @@ const Dashboard: React.FC<DashboardProps> = ({
               onClick={() => permissions?.canShareReport !== false && setIsShareModalOpen(true)}
               title="Share Report"
               className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1 md:px-4 md:py-2 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-wider transition-all cursor-pointer shrink-0",
+                "hidden md:flex items-center gap-1.5 px-3 py-1.5 md:px-4 md:py-2 rounded-xl md:rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-wider transition-all cursor-pointer shrink-0",
                 permissions?.canShareReport === false
                   ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-65"
                   : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95 text-white shadow-md shadow-indigo-600/20"
               )}
             >
               <Share2 size={13} className={permissions?.canShareReport === false ? "" : "animate-pulse"} />
-              <span className="hidden sm:inline">Share Report</span>
-              <span className="sm:hidden">Share</span>
+              <span>Share Report</span>
             </button>
           </div>
         </div>
