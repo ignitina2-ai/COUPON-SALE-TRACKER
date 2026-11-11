@@ -631,7 +631,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 <Share2 size={24} />
               </h2>
               <h3 className="font-black text-slate-800 text-lg uppercase tracking-tight">Share Report</h3>
-              <p className="text-slate-500 text-xs mt-1 font-bold">ഏത് റിപ്പോർട്ടാണ് ലഭിക്കേണ്ടത്?</p>
+              <p className="text-slate-600 text-xs mt-1 font-bold">Select Report Period</p>
               <p className="text-slate-400 text-[10px] mt-0.5">Choose report timeframe to download & share</p>
             </div>
             
@@ -644,7 +644,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                 className="w-full flex flex-col items-center justify-center gap-0.5 p-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 font-bold text-white rounded-xl active:scale-[0.98] transition-all shadow-md cursor-pointer"
               >
                 <span className="text-xs font-black uppercase tracking-wider">Today's Report</span>
-                <span className="text-[10px] opacity-90 font-medium">ഇന്നത്തെ റിപ്പോർട്ട്</span>
+                <span className="text-[10px] opacity-90 font-medium">Daily summary of today's sales</span>
               </button>
               
               <button
@@ -655,14 +655,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                 className="w-full flex flex-col items-center justify-center gap-0.5 p-3.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl font-bold active:scale-[0.98] transition-all shadow-sm cursor-pointer"
               >
                 <span className="text-xs font-black uppercase tracking-wider">Overall Report</span>
-                <span className="text-[10px] text-slate-500 font-semibold">ആകെ റിപ്പോർട്ട്</span>
+                <span className="text-[10px] text-slate-500 font-semibold">Complete ledger breakdown</span>
               </button>
               
               <button
                 onClick={() => setIsShareModalOpen(false)}
                 className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold rounded-xl text-xs uppercase tracking-wider active:scale-[0.98] transition-all cursor-pointer mt-2"
               >
-                Cancel / റദ്ദാക്കുക
+                Cancel
               </button>
             </div>
           </div>

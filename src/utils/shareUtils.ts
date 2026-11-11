@@ -84,7 +84,7 @@ export async function shareDailySalesCard(options: {
         <span style="font-size: 11px; font-weight: 900; color: #818cf8; text-transform: uppercase; letter-spacing: 0.12em; display: block;">ST. CASIMIR CHARITABLE TRUST</span>
         <span style="font-size: 10px; font-weight: 800; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.15em;">Daily Ledger Share</span>
         <h2 style="font-size: 20px; font-weight: 900; letter-spacing: -0.025em; text-transform: uppercase; margin: 0; color: #ffffff;">Coupon Sales Summary</h2>
-        <p style="font-size: 12px; font-weight: 700; color: #a5b4fc; margin: 0;">കൂപ്പൺ വില്പന റിപ്പോർട്ട് (Daily Report)</p>
+        <p style="font-size: 11px; font-weight: 700; color: #a5b4fc; margin: 0;">Daily Sales Ledger</p>
       </div>
       <div style="background-color: rgba(59, 130, 246, 0.15); border: 2px solid #3b82f6; color: #60a5fa; padding: 10px 18px; border-radius: 12px; text-align: right;">
         <span style="font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; display: block; color: #94a3b8; margin-bottom: 2px;">Report Date</span>
@@ -118,7 +118,7 @@ export async function shareDailySalesCard(options: {
     <div style="background-color: rgba(20, 184, 166, 0.08); border: 2px solid #14b8a6; padding: 18px; border-radius: 16px; display: flex; align-items: center; justify-content: space-between;">
       <div>
         <span style="color: #2dd4bf; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Secretary Handover</span>
-        <span style="font-size: 13px; color: #cbd5e1; font-weight: 700; margin-top: 4px; display: block;">ട്രഷറർക്ക് കൈമാറിയ തുക (Handover)</span>
+        <span style="font-size: 12px; color: #cbd5e1; font-weight: 700; margin-top: 4px; display: block;">Amount Handed Over to Treasurer</span>
       </div>
       <span style="font-size: 24px; font-weight: 950; color: #2dd4bf; font-family: monospace;">₹${totalHandover.toLocaleString('en-IN')}</span>
     </div>
@@ -128,7 +128,7 @@ export async function shareDailySalesCard(options: {
     <div style="background-color: rgba(30, 41, 59, 0.5); border: 2px solid #334155; padding: 22px; border-radius: 16px; display: flex; flex-direction: column; gap: 14px;">
       <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #1e293b; padding-bottom: 10px;">
         <span style="font-size: 13px; font-weight: 900; color: #cbd5e1; text-transform: uppercase; letter-spacing: 0.05em;">UPI Account Breakdown</span>
-        <span style="font-size: 11px; font-weight: 800; color: #94a3b8;">യു.പി.ഐ വിവരങ്ങൾ</span>
+        <span style="font-size: 11px; font-weight: 800; color: #94a3b8;">Digital Payment Accounts</span>
       </div>
       <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
         ${upiBreakdown.length === 0 ? `
@@ -244,7 +244,7 @@ export async function shareUPIReceiptCard(options: {
       <div style="display: flex; flex-direction: column; gap: 4px;">
         <span style="font-size: 9px; font-weight: 900; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.15em;">${badgeText}</span>
         <h2 style="font-size: 20px; font-weight: 900; color: #ffffff; text-transform: uppercase; margin: 0;">${methodLabel}</h2>
-        <p style="font-size: 11px; font-weight: 600; color: #94a3b8; margin: 0;">യു.പി.ഐ രസീത് സ്റ്റേറ്റ്മെന്റ്</p>
+        <p style="font-size: 11px; font-weight: 600; color: #94a3b8; margin: 0;">UPI Receipt Statement</p>
       </div>
       <div style="background-color: #1e293b; padding: 6px 14px; border-radius: 12px; text-align: right;">
         <span style="font-size: 8px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; display: block;">Timeframe</span>
@@ -328,7 +328,6 @@ export async function shareTransactionReceiptCard(transaction: Transaction, paym
   const statusBorder = transaction.paidToTreasurer ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)';
   const statusTextColor = transaction.paidToTreasurer ? '#34d399' : '#fbbf24';
   const statusLabelEn = transaction.paidToTreasurer ? 'VERIFIED & AUDITED' : 'PENDING TREASURER AUDIT';
-  const statusLabelMl = transaction.paidToTreasurer ? 'ട്രഷറർ അംഗീകരിച്ചു' : 'ഓഡിറ്റിംഗ് പൂർത്തിയാകാനുണ്ട്';
 
   container.innerHTML = `
     <!-- Top colored bar mimicking strip ticket border -->
@@ -338,58 +337,57 @@ export async function shareTransactionReceiptCard(transaction: Transaction, paym
       <span style="font-size: 11px; font-weight: 900; color: #60a5fa; text-transform: uppercase; letter-spacing: 0.1em; display: block; margin-bottom: 2px;">ST. CASIMIR CHARITABLE TRUST</span>
       <span style="font-size: 8px; font-weight: 900; color: #818cf8; text-transform: uppercase; letter-spacing: 0.15em; display: block; margin-bottom: 2px;">Coupon Sale Receipt</span>
       <h2 style="font-size: 16px; font-weight: 900; color: #ffffff; tracking: 0.05em; text-transform: uppercase; margin: 0;">SALES RECEIPT</h2>
-      <p style="font-size: 10px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">കൂപ്പൺ വിതരണ രസീത്</p>
+      <p style="font-size: 10px; font-weight: 700; color: #64748b; margin: 4px 0 0 0;">Official Sales Acknowledgment</p>
     </div>
 
     <!-- Status Badge -->
     <div style="background-color: ${statusBg}; border: 1px solid ${statusBorder}; color: ${statusTextColor}; padding: 8px 16px; border-radius: 12px; text-align: center; display: flex; flex-direction: column; gap: 2px;">
-      <span style="font-size: 8px; font-weight: 950; letter-spacing: 0.1em; text-transform: uppercase; display: block;">${statusLabelEn}</span>
-      <span style="font-size: 11px; font-weight: 800; display: block;">${statusLabelMl}</span>
+      <span style="font-size: 9px; font-weight: 950; letter-spacing: 0.12em; text-transform: uppercase; display: block;">${statusLabelEn}</span>
     </div>
 
     <!-- Receipt Details Table style -->
     <div style="display: flex; flex-direction: column; gap: 10px;">
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(30, 41, 59, 0.6);">
-        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Customer Name (പേര്)</span>
+        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Customer Name</span>
         <span style="font-weight: 900; color: #e2e8f0; text-align: right;">${transaction.name}</span>
       </div>
       
       ${transaction.phone ? `
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(30, 41, 59, 0.6);">
-        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Phone Number (ഫോൺ)</span>
+        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Phone Number</span>
         <span style="font-weight: 700; font-family: monospace; color: #cbd5e1; text-align: right;">${transaction.phone}</span>
       </div>
       ` : ''}
 
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(30, 41, 59, 0.6);">
-        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Area / Location (മേഖല)</span>
+        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Area / Location</span>
         <span style="font-weight: 700; color: #cbd5e1; text-align: right;">${transaction.area}</span>
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(30, 41, 59, 0.6);">
-        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Book Number (ബുക്ക് നമ്പർ)</span>
+        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Book Number</span>
         <span style="font-family: monospace; color: #cbd5e1; text-align: right; font-weight: 900;">${transaction.bookNumber || 'N/A'}</span>
       </div>
 
       ${(transaction.couponNumber || calculateCouponRangeFromBookString(transaction.bookNumber)) ? `
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(30, 41, 59, 0.6);">
-        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Coupon Number (കൂപ്പൺ നമ്പർ)</span>
+        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Coupon Number</span>
         <span style="font-family: monospace; color: #cbd5e1; text-align: right; font-weight: 900;">${transaction.couponNumber || calculateCouponRangeFromBookString(transaction.bookNumber)}</span>
       </div>
       ` : ''}
 
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(30, 41, 59, 0.6);">
-        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Books Delivered (ബുക്കുകൾ)</span>
+        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Books Delivered</span>
         <span style="font-family: monospace; color: #cbd5e1; text-align: right; font-weight: 900;">${transaction.books} Books (${transaction.coupons} Coupons)</span>
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(30, 41, 59, 0.6);">
-        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Payment Method (രീതി)</span>
+        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Payment Method</span>
         <span style="font-weight: 700; color: #818cf8; letter-spacing: 0.05em; text-align: right; text-transform: uppercase;">${paymentLabel}</span>
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; padding-bottom: 6px; border-bottom: 1px solid rgba(30, 41, 59, 0.6);">
-        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Transaction Date (തീയതി)</span>
+        <span style="color: #64748b; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em;">Transaction Date</span>
         <span style="font-weight: 600; color: #cbd5e1; font-family: monospace; text-align: right;">${(() => {
           const d = new Date(transaction.date);
           if (isNaN(d.getTime())) return transaction.date;
@@ -403,7 +401,7 @@ export async function shareTransactionReceiptCard(transaction: Transaction, paym
     <div style="background: linear-gradient(to right, #1e293b, #1e1b4b); padding: 16px; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; border: 1px solid rgba(30, 41, 59, 0.5); margin-top: 4px;">
       <div>
         <span style="color: #94a3b8; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; display: block;">Total Amount Paid</span>
-        <p style="font-size: 9px; color: #64748b; margin: 2px 0 0 0;">ആകെ ലഭിച്ച തുക</p>
+        <p style="font-size: 9px; color: #64748b; margin: 2px 0 0 0;">Received Amount</p>
       </div>
       <span style="font-size: 24px; font-weight: 900; color: #ffffff; font-family: monospace;">₹${transaction.totalAmount.toLocaleString('en-IN')}</span>
     </div>
@@ -413,7 +411,7 @@ export async function shareTransactionReceiptCard(transaction: Transaction, paym
     <div style="background-color: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.15); padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
       <div>
         <span style="color: #f59e0b; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; display: block;">CREDIT BALANCE DUE</span>
-        <span style="font-size: 8px; color: #94a3b8; display: block; margin-top: 2px;">ബാക്കി നൽകാനുള്ള തുക</span>
+        <span style="font-size: 8px; color: #94a3b8; display: block; margin-top: 2px;">Pending Balance</span>
       </div>
       <span style="font-size: 16px; font-weight: 900; color: #f59e0b; font-family: monospace;">₹${transaction.creditAmount.toLocaleString('en-IN')}</span>
     </div>
