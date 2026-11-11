@@ -159,9 +159,10 @@ export async function shareDailySalesCard(options: {
   await new Promise((resolve) => setTimeout(resolve, 300));
 
   try {
-    // Warm up/resolve rendering, call twice for Safari/iOS support
-    await toPng(container, { cacheBust: true, pixelRatio: 2 });
-    const dataUrl = await toPng(container, { cacheBust: true, pixelRatio: 2 });
+    // Warm up/resolve rendering with skipFonts: true to avoid SecurityError on external Google Fonts
+    const imageOptions = { cacheBust: true, pixelRatio: 2, skipFonts: true };
+    await toPng(container, imageOptions);
+    const dataUrl = await toPng(container, imageOptions);
     if (container.parentNode) {
       container.parentNode.removeChild(container);
     }
@@ -171,7 +172,6 @@ export async function shareDailySalesCard(options: {
     if (container.parentNode) {
       document.body.removeChild(container);
     }
-    alert("Error occurred while generating Sale report card image.");
   }
 }
 
@@ -286,9 +286,10 @@ export async function shareUPIReceiptCard(options: {
   await new Promise((resolve) => setTimeout(resolve, 300));
 
   try {
-    // Warm up/resolve rendering, call twice for Safari/iOS support
-    await toPng(container, { cacheBust: true, pixelRatio: 2 });
-    const dataUrl = await toPng(container, { cacheBust: true, pixelRatio: 2 });
+    // Warm up/resolve rendering with skipFonts: true to avoid SecurityError on external Google Fonts
+    const imageOptions = { cacheBust: true, pixelRatio: 2, skipFonts: true };
+    await toPng(container, imageOptions);
+    const dataUrl = await toPng(container, imageOptions);
     if (container.parentNode) {
       container.parentNode.removeChild(container);
     }
@@ -298,7 +299,6 @@ export async function shareUPIReceiptCard(options: {
     if (container.parentNode) {
       document.body.removeChild(container);
     }
-    alert("Error occurred while generating UPI report card image.");
   }
 }
 
@@ -446,9 +446,10 @@ export async function shareTransactionReceiptCard(transaction: Transaction, paym
   await new Promise((resolve) => setTimeout(resolve, 300));
 
   try {
-    // Warm up/resolve rendering, call twice for Safari/iOS support
-    await toPng(container, { cacheBust: true, pixelRatio: 2 });
-    const dataUrl = await toPng(container, { cacheBust: true, pixelRatio: 2 });
+    // Warm up/resolve rendering with skipFonts: true to avoid SecurityError on external Google Fonts
+    const imageOptions = { cacheBust: true, pixelRatio: 2, skipFonts: true };
+    await toPng(container, imageOptions);
+    const dataUrl = await toPng(container, imageOptions);
     if (container.parentNode) {
       container.parentNode.removeChild(container);
     }
@@ -458,6 +459,5 @@ export async function shareTransactionReceiptCard(transaction: Transaction, paym
     if (container.parentNode) {
       document.body.removeChild(container);
     }
-    alert("Error occurred while generating individual transaction receipt image.");
   }
 }
