@@ -14,8 +14,12 @@ import {
   Users,
   Share2,
   Ticket,
-  Gift
+  Gift,
+  HandCoins,
+  Scale
 } from 'lucide-react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { shareDailySalesCard, shareUPIReceiptCard } from '../utils/shareUtils';
 import { 
   ResponsiveContainer, 
@@ -72,6 +76,85 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [timeframe, setTimeframe] = useState<'overall' | 'today'>('overall');
   const [currentTimeStr, setCurrentTimeStr] = useState<string>('');
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+  const [prizeStats, setPrizeStats] = useState<{
+    totalReceivedAmount: number;
+    balanceAmount: number;
+    trustTotalAmount: number;
+    receivedCount: number;
+  }>(() => {
+    try {
+      const savedTracking = localStorage.getItem('stCasimirLuckyDraw2026_tracking');
+      const savedReceived = localStorage.getItem('stCasimirLuckyDraw2026_receivedAmounts');
+      const tracking = savedTracking ? JSON.parse(savedTracking) : {};
+      const received = savedReceived && Array.isArray(JSON.parse(savedReceived)) ? JSON.parse(savedReceived) : [];
+      let trustCost = 0;
+      Object.keys(tracking).forEach(k => {
+        if (tracking[k]?.status === 'TRUST') {
+          trustCost += (Number(tracking[k]?.amount) || 0);
+        }
+      });
+      const receivedSum = received.reduce((sum: number, item: any) => sum + (Number(item?.amount) || 0), 0);
+      return {
+        totalReceivedAmount: receivedSum,
+        balanceAmount: receivedSum - trustCost,
+        trustTotalAmount: trustCost,
+        receivedCount: received.length
+      };
+    } catch (e) {
+      return { totalReceivedAmount: 0, balanceAmount: 0, trustTotalAmount: 0, receivedCount: 0 };
+    }
+  });
+
+  useEffect(() => {
+    const computePrizeData = (trackingObj: any, receivedArr: any[]) => {
+      let trustCost = 0;
+      if (trackingObj && typeof trackingObj === 'object') {
+        Object.keys(trackingObj).forEach(k => {
+          if (trackingObj[k]?.status === 'TRUST') {
+            trustCost += (Number(trackingObj[k]?.amount) || 0);
+          }
+        });
+      }
+      const validReceived = Array.isArray(receivedArr) ? receivedArr : [];
+      const receivedSum = validReceived.reduce((sum: number, item: any) => sum + (Number(item?.amount) || 0), 0);
+      setPrizeStats({
+        totalReceivedAmount: receivedSum,
+        balanceAmount: receivedSum - trustCost,
+        trustTotalAmount: trustCost,
+        receivedCount: validReceived.length
+      });
+    };
+
+    const handleStorageUpdate = () => {
+      try {
+        const savedTracking = localStorage.getItem('stCasimirLuckyDraw2026_tracking');
+        const savedReceived = localStorage.getItem('stCasimirLuckyDraw2026_receivedAmounts');
+        computePrizeData(
+          savedTracking ? JSON.parse(savedTracking) : {},
+          savedReceived ? JSON.parse(savedReceived) : []
+        );
+      } catch (e) {}
+    };
+
+    window.addEventListener('storage', handleStorageUpdate);
+
+    let unsubFirestore: (() => void) | null = null;
+    try {
+      unsubFirestore = onSnapshot(doc(db, 'prizeCollection', 'state'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          computePrizeData(data?.tracking, data?.receivedAmounts);
+        }
+      }, (err) => {
+        console.warn("Prize sync in Dashboard listener notice:", err);
+      });
+    } catch (e) {}
+
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+      if (unsubFirestore) unsubFirestore();
+    };
+  }, []);
 
   useEffect(() => {
     if (isShareModalOpen) {
@@ -465,18 +548,18 @@ const Dashboard: React.FC<DashboardProps> = ({
           <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Prize Collection</span>
         </button>
         <button 
-          onClick={() => (window as any).setActiveTab?.('income-expense')}
-          className="flex flex-col items-center justify-center p-3 md:p-4 bg-indigo-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-indigo-700 transition-all active:scale-95 cursor-pointer text-center"
-        >
-          <TrendingDown className="mb-1.5 w-5 h-5" />
-          <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Income & Expense</span>
-        </button>
-        <button 
           onClick={() => (window as any).setActiveTab?.('secretary-handover')}
           className="flex flex-col items-center justify-center p-3 md:p-4 bg-emerald-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-emerald-700 transition-all active:scale-95 cursor-pointer text-center"
         >
           <Users className="mb-1.5 w-5 h-5" />
           <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Treasury Handover</span>
+        </button>
+        <button 
+          onClick={() => (window as any).setActiveTab?.('income-expense')}
+          className="flex flex-col items-center justify-center p-3 md:p-4 bg-indigo-600 text-white rounded-xl md:rounded-2xl shadow-md hover:bg-indigo-700 transition-all active:scale-95 cursor-pointer text-center"
+        >
+          <TrendingDown className="mb-1.5 w-5 h-5" />
+          <span className="text-[10px] md:text-xs font-bold uppercase tracking-wider">Income & Expense</span>
         </button>
       </div>
 
@@ -569,6 +652,77 @@ const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
         )}
+      </section>
+
+      {/* SECTION 2: Prize Collection Summary */}
+      <section className="space-y-3">
+        <div className="flex items-center justify-between border-l-4 border-[#00540F] pl-2">
+          <div className="flex items-center gap-2">
+            <Gift className="w-4 h-4 text-[#00540F]" />
+            <h3 className="font-black text-slate-800 text-xs md:text-sm uppercase tracking-widest">
+              Prize Collection
+            </h3>
+            <span className="text-[10px] font-bold text-slate-400 hidden sm:inline">
+              (111 Prizes)
+            </span>
+          </div>
+          <button 
+            type="button"
+            onClick={() => (window as any).setActiveTab?.('prize-collection')}
+            className="text-[10px] md:text-xs font-black uppercase tracking-wider text-[#00540F] hover:underline flex items-center gap-1 cursor-pointer"
+          >
+            <span>Open Prize Collection</span>
+            <ArrowUpRight size={13} />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          {/* 1. Recieved Amount button */}
+          <button
+            type="button"
+            onClick={() => (window as any).setActiveTab?.('prize-collection')}
+            style={{ backgroundColor: '#00540F' }}
+            className="p-3 sm:p-4 rounded-xl md:rounded-2xl shadow-sm hover:shadow-md hover:brightness-110 transition-all active:scale-95 cursor-pointer text-left text-white border border-[#00540F] flex items-center justify-between gap-2.5 sm:gap-3 group select-none"
+          >
+            <div className="min-w-0 flex-1">
+              <span className="text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wider block text-emerald-100/90 truncate">
+                Recieved Amount
+              </span>
+              <h3 className="text-sm sm:text-base md:text-xl font-black tracking-tight text-white mt-0.5 truncate font-mono">
+                ₹{prizeStats.totalReceivedAmount.toLocaleString('en-IN')}
+              </h3>
+              <p className="text-[8px] sm:text-[9px] font-semibold text-emerald-200/80 mt-0.5 truncate">
+                {prizeStats.receivedCount} Sponsor Entries
+              </p>
+            </div>
+            <div className="p-2 sm:p-2.5 rounded-xl bg-white/15 text-white shrink-0 group-hover:scale-105 transition-transform">
+              <HandCoins className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </div>
+          </button>
+
+          {/* 2. Net Balance button */}
+          <button
+            type="button"
+            onClick={() => (window as any).setActiveTab?.('prize-collection')}
+            style={{ backgroundColor: '#6B0101' }}
+            className="p-3 sm:p-4 rounded-xl md:rounded-2xl shadow-sm hover:shadow-md hover:brightness-110 transition-all active:scale-95 cursor-pointer text-left text-white border border-[#6B0101] flex items-center justify-between gap-2.5 sm:gap-3 group select-none"
+          >
+            <div className="min-w-0 flex-1">
+              <span className="text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wider block text-rose-100/90 truncate">
+                Net Balance
+              </span>
+              <h3 className="text-sm sm:text-base md:text-xl font-black tracking-tight text-white mt-0.5 truncate font-mono">
+                ₹{prizeStats.balanceAmount.toLocaleString('en-IN')}
+              </h3>
+              <p className="text-[8px] sm:text-[9px] font-semibold text-rose-200/80 mt-0.5 truncate">
+                Received − Trust Exp.
+              </p>
+            </div>
+            <div className="p-2 sm:p-2.5 rounded-xl bg-white/15 text-white shrink-0 group-hover:scale-105 transition-transform">
+              <Scale className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            </div>
+          </button>
+        </div>
       </section>
 
       {/* Mobile-only Share Daily Report button placed between Each UPI Receipts and Add New Sale */}
