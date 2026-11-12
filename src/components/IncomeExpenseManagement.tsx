@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Minus, 
@@ -21,7 +21,10 @@ import {
   X,
   Upload,
   AlertCircle,
-  Printer
+  Printer,
+  HandCoins,
+  Scale,
+  Gift
 } from 'lucide-react';
 import { IncomeExpense, EntryType } from '@/types';
 import { cn } from '@/lib/utils';
@@ -30,7 +33,8 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Papa from 'papaparse';
 import { uploadFile, deleteFileFromStorage } from '../lib/storage';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import ConfirmationModal from './ConfirmationModal';
 
 interface IncomeExpenseManagementProps {
@@ -60,6 +64,85 @@ const IncomeExpenseManagement: React.FC<IncomeExpenseManagementProps> = ({
   const [filterCategory, setFilterCategory] = useState('ALL');
   const [deleteIds, setDeleteIds] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Prize Collection stats for Recieved Amount and Net Balance summary
+  const [prizeStats, setPrizeStats] = useState(() => {
+    try {
+      const savedTracking = localStorage.getItem('stCasimirLuckyDraw2026_tracking');
+      const savedReceived = localStorage.getItem('stCasimirLuckyDraw2026_receivedAmounts');
+      const tracking = savedTracking ? JSON.parse(savedTracking) : {};
+      const received = savedReceived ? JSON.parse(savedReceived) : [];
+      let trustCost = 0;
+      Object.keys(tracking).forEach(k => {
+        if (tracking[k]?.status === 'TRUST') {
+          trustCost += (Number(tracking[k]?.amount) || 0);
+        }
+      });
+      const receivedSum = Array.isArray(received) 
+        ? received.reduce((sum: number, item: any) => sum + (Number(item?.amount) || 0), 0)
+        : 0;
+      return {
+        totalReceivedAmount: receivedSum,
+        balanceAmount: receivedSum - trustCost,
+        trustTotalAmount: trustCost,
+        receivedCount: Array.isArray(received) ? received.length : 0
+      };
+    } catch (e) {
+      return { totalReceivedAmount: 0, balanceAmount: 0, trustTotalAmount: 0, receivedCount: 0 };
+    }
+  });
+
+  useEffect(() => {
+    const computePrizeData = (trackingObj: any, receivedArr: any[]) => {
+      let trustCost = 0;
+      if (trackingObj && typeof trackingObj === 'object') {
+        Object.keys(trackingObj).forEach(k => {
+          if (trackingObj[k]?.status === 'TRUST') {
+            trustCost += (Number(trackingObj[k]?.amount) || 0);
+          }
+        });
+      }
+      const validReceived = Array.isArray(receivedArr) ? receivedArr : [];
+      const receivedSum = validReceived.reduce((sum: number, item: any) => sum + (Number(item?.amount) || 0), 0);
+      setPrizeStats({
+        totalReceivedAmount: receivedSum,
+        balanceAmount: receivedSum - trustCost,
+        trustTotalAmount: trustCost,
+        receivedCount: validReceived.length
+      });
+    };
+
+    const handleStorageUpdate = () => {
+      try {
+        const savedTracking = localStorage.getItem('stCasimirLuckyDraw2026_tracking');
+        const savedReceived = localStorage.getItem('stCasimirLuckyDraw2026_receivedAmounts');
+        computePrizeData(
+          savedTracking ? JSON.parse(savedTracking) : {},
+          savedReceived ? JSON.parse(savedReceived) : []
+        );
+      } catch (e) {}
+    };
+
+    window.addEventListener('storage', handleStorageUpdate);
+
+    let unsubFirestore: (() => void) | null = null;
+    try {
+      unsubFirestore = onSnapshot(doc(db, 'prizeCollection', 'state'), (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          computePrizeData(data?.tracking, data?.receivedAmounts);
+        }
+      }, (err) => {
+        console.warn("Prize sync in IncomeExpense notice:", err);
+      });
+    } catch (e) {}
+
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+      if (unsubFirestore) unsubFirestore();
+    };
+  }, []);
+
   const getTodayISTStr = () => {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
   };
@@ -654,6 +737,61 @@ const IncomeExpenseManagement: React.FC<IncomeExpenseManagementProps> = ({
           <h2 className="text-lg md:text-2xl font-black">₹{balance.toLocaleString('en-IN')}</h2>
           <p className="text-white/50 text-[8px] font-bold uppercase tracking-wider mt-0.5 font-sans">Net Cash Flow</p>
         </div>
+      </div>
+
+      {/* Prize Collection: Recieved Amount & Net Balance Grid (At the bottom of Income & Expense summary cards) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4">
+        {/* 1. Recieved Amount button */}
+        <button
+          type="button"
+          onClick={() => (window as any).setActiveTab?.('prize-collection')}
+          style={{ backgroundColor: '#00540F' }}
+          className="p-3.5 md:p-5 rounded-xl md:rounded-2xl shadow-md hover:shadow-lg hover:brightness-110 transition-all active:scale-98 cursor-pointer text-left text-white border border-[#00540F] flex items-center justify-between gap-3 group select-none"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Gift size={13} className="text-emerald-200/90" />
+              <span className="text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wider block text-emerald-100/90 truncate">
+                Recieved Amount
+              </span>
+            </div>
+            <h2 className="text-lg md:text-2xl font-black tracking-tight text-white mt-0.5 truncate font-mono">
+              ₹{prizeStats.totalReceivedAmount.toLocaleString('en-IN')}
+            </h2>
+            <p className="text-emerald-200/80 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider mt-0.5 truncate">
+              {prizeStats.receivedCount} Sponsor Entries • Prize Collection
+            </p>
+          </div>
+          <div className="p-2 sm:p-2.5 rounded-xl bg-white/15 text-white shrink-0 group-hover:scale-105 transition-transform">
+            <HandCoins className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+        </button>
+
+        {/* 2. Net Balance button */}
+        <button
+          type="button"
+          onClick={() => (window as any).setActiveTab?.('prize-collection')}
+          style={{ backgroundColor: '#6B0101' }}
+          className="p-3.5 md:p-5 rounded-xl md:rounded-2xl shadow-md hover:shadow-lg hover:brightness-110 transition-all active:scale-98 cursor-pointer text-left text-white border border-[#6B0101] flex items-center justify-between gap-3 group select-none"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <Gift size={13} className="text-red-200/90" />
+              <span className="text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wider block text-red-100/90 truncate">
+                Net Balance
+              </span>
+            </div>
+            <h2 className="text-lg md:text-2xl font-black tracking-tight text-white mt-0.5 truncate font-mono">
+              ₹{prizeStats.balanceAmount.toLocaleString('en-IN')}
+            </h2>
+            <p className="text-red-200/80 text-[8px] sm:text-[9px] font-bold uppercase tracking-wider mt-0.5 truncate">
+              After Trust Cost (₹{prizeStats.trustTotalAmount.toLocaleString('en-IN')}) • Prize Collection
+            </p>
+          </div>
+          <div className="p-2 sm:p-2.5 rounded-xl bg-white/15 text-white shrink-0 group-hover:scale-105 transition-transform">
+            <Scale className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+          </div>
+        </button>
       </div>
 
       {showForm && (

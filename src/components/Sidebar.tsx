@@ -50,10 +50,10 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'transactions', label: 'Transaction History', icon: History },
     { id: 'credit', label: 'Credit Management', icon: CreditCard },
-    { id: 'income-expense', label: 'Income & Expense', icon: Banknote },
     { id: 'secretary-handover', label: 'Treasury Handover', icon: Users },
     { id: 'prize-collection', label: 'Prize Collection', icon: Gift },
     { id: 'prize-settings', label: 'Prize Settings', icon: SlidersHorizontal },
+    { id: 'income-expense', label: 'Income & Expense', icon: Banknote },
     { id: 'settings', label: 'Settings & Backup', icon: SettingsIcon },
   ].filter((item) => {
     if (item.id === 'income-expense' && permissions?.hideIncomeExpense) {

@@ -940,6 +940,90 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
         </div>
       </div>
 
+      {/* Received Amounts Ledger Management (Moved to Top) */}
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <HandCoins size={20} className="text-blue-600" />
+            <h2 className="font-black text-slate-900 text-base">Received Amount Ledger</h2>
+            <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+              {receivedAmounts.length} Entries
+            </span>
+          </div>
+          <div className="text-sm font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200">
+            Total Received: ₹{stats.totalReceivedAmount.toLocaleString('en-IN')}
+          </div>
+        </div>
+
+        {/* Add Form */}
+        <form onSubmit={handleAddReceivedAmount} className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            required
+            placeholder="Contributor / Sponsor Name (e.g. Joy Varghese)"
+            value={newReceivedName}
+            onChange={(e) => setNewReceivedName(e.target.value)}
+            className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+          />
+          <div className="relative sm:w-48">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹</span>
+            <input
+              type="number"
+              required
+              min="0"
+              step="any"
+              placeholder="Amount"
+              value={newReceivedAmount}
+              onChange={(e) => setNewReceivedAmount(e.target.value)}
+              className="w-full pl-8 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+            />
+          </div>
+          <button
+            type="submit"
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer shrink-0"
+          >
+            <Plus size={15} />
+            <span>Add Entry</span>
+          </button>
+        </form>
+
+        {/* Entries List */}
+        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+          {receivedAmounts.length === 0 ? (
+            <p className="text-xs text-slate-400 italic py-3 text-center">No received amounts added yet.</p>
+          ) : (
+            receivedAmounts.map((entry, idx) => (
+              <div 
+                key={entry.id || idx}
+                className="flex items-center justify-between gap-3 bg-blue-50/50 border border-blue-100 rounded-xl px-3.5 py-2.5"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-5 h-5 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-[10px] font-black shrink-0">
+                    {idx + 1}
+                  </span>
+                  <span className="text-xs font-bold text-slate-800 truncate">
+                    {entry.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-xs font-black text-blue-800 bg-white px-2.5 py-1 rounded-lg border border-blue-200">
+                    ₹{(Number(entry.amount) || 0).toLocaleString('en-IN')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteReceivedAmount(idx)}
+                    className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-100 rounded-lg transition"
+                    title="Delete Entry"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
       {/* Category Banner if filtered */}
       {selectedCategory !== 'ALL' && (
         <div className="bg-emerald-50 border border-emerald-200 p-3.5 rounded-2xl text-xs text-emerald-900 flex flex-wrap items-center justify-between gap-2 shadow-xs">
@@ -1276,90 +1360,6 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
           </div>
         </div>
       )}
-
-      {/* Received Amounts Ledger Management */}
-      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <HandCoins size={20} className="text-blue-600" />
-            <h2 className="font-black text-slate-900 text-base">Received Amount Ledger</h2>
-            <span className="bg-blue-100 text-blue-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-              {receivedAmounts.length} Entries
-            </span>
-          </div>
-          <div className="text-sm font-black text-blue-700 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200">
-            Total Received: ₹{stats.totalReceivedAmount.toLocaleString('en-IN')}
-          </div>
-        </div>
-
-        {/* Add Form */}
-        <form onSubmit={handleAddReceivedAmount} className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="text"
-            required
-            placeholder="Contributor / Sponsor Name (e.g. Joy Varghese)"
-            value={newReceivedName}
-            onChange={(e) => setNewReceivedName(e.target.value)}
-            className="flex-1 px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
-          />
-          <div className="relative sm:w-48">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹</span>
-            <input
-              type="number"
-              required
-              min="0"
-              step="any"
-              placeholder="Amount"
-              value={newReceivedAmount}
-              onChange={(e) => setNewReceivedAmount(e.target.value)}
-              className="w-full pl-8 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-black focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
-            />
-          </div>
-          <button
-            type="submit"
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer shrink-0"
-          >
-            <Plus size={15} />
-            <span>Add Entry</span>
-          </button>
-        </form>
-
-        {/* Entries List */}
-        <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-          {receivedAmounts.length === 0 ? (
-            <p className="text-xs text-slate-400 italic py-3 text-center">No received amounts added yet.</p>
-          ) : (
-            receivedAmounts.map((entry, idx) => (
-              <div 
-                key={entry.id || idx}
-                className="flex items-center justify-between gap-3 bg-blue-50/50 border border-blue-100 rounded-xl px-3.5 py-2.5"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-5 h-5 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-[10px] font-black shrink-0">
-                    {idx + 1}
-                  </span>
-                  <span className="text-xs font-bold text-slate-800 truncate">
-                    {entry.name}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <span className="text-xs font-black text-blue-800 bg-white px-2.5 py-1 rounded-lg border border-blue-200">
-                    ₹{(Number(entry.amount) || 0).toLocaleString('en-IN')}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteReceivedAmount(idx)}
-                    className="p-1 text-rose-500 hover:text-rose-700 hover:bg-rose-100 rounded-lg transition"
-                    title="Delete Entry"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
 
       {/* Category Summary Modal / Drawer */}
       {showCategoryDrawer && (
