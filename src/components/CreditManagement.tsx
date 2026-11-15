@@ -406,8 +406,30 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
         </div>
       </header>
 
+      {/* Print-only Title & Summary Header */}
+      <div className="hidden print:flex items-center justify-between bg-slate-50 border border-slate-300 px-3 py-2 mb-3">
+        <div>
+          <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Credit Management — Outstanding Ledger</h2>
+          <p className="text-[10px] font-semibold text-slate-600">Outstanding Credit &amp; Book Details Report</p>
+        </div>
+        <div className="flex items-center gap-4 text-right">
+          <div>
+            <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">Cases</span>
+            <span className="text-xs font-black text-slate-900">{filteredCredits.length}</span>
+          </div>
+          <div>
+            <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">Books</span>
+            <span className="text-xs font-black text-slate-900">{filteredCredits.reduce((acc, t) => acc + (t.books || 0), 0)}</span>
+          </div>
+          <div>
+            <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">Total Due</span>
+            <span className="text-xs font-black text-rose-700">₹{filteredCredits.reduce((acc, t) => acc + t.creditAmount, 0).toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+      </div>
+
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white p-2 md:p-3 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white p-2 md:p-3 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm print:hidden">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
           <input 
@@ -447,29 +469,30 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
           filteredCredits.map((t) => {
             const days = differenceInDays(new Date(), new Date(t.date));
             const isExpanded = !isCollapsedMode || expandedIds.has(t.id);
+            const resolvedCouponRange = t.couponNumber || (t.bookNumber ? calculateCouponRangeFromBookString(t.bookNumber) : '');
             return (
               <div 
                 key={t.id} 
                 className={cn(
-                  "bg-white p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all group relative overflow-hidden",
+                  "bg-white p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all group relative overflow-hidden page-break-inside-avoid",
                   isCollapsedMode ? "cursor-pointer hover:border-blue-200" : "",
                   isExpanded ? "border-slate-200 shadow-sm" : "border-slate-100 shadow-sm"
                 )}
                 onClick={() => isCollapsedMode && toggleExpand(t.id)}
               >
-                {days >= 30 && <div className="absolute top-0 left-0 w-1 h-full bg-rose-500" />}
+                {days >= 30 && <div className="absolute top-0 left-0 w-1 h-full bg-rose-500 print:hidden" />}
                 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 print:flex-row print:items-center">
                   <div className="space-y-1.5 flex-1">
                     <div className="flex items-start gap-2.5">
-                      <div className="bg-blue-50 p-2 rounded-lg md:rounded-xl text-blue-600 shrink-0">
+                      <div className="bg-blue-50 p-2 rounded-lg md:rounded-xl text-blue-600 shrink-0 print:hidden">
                         <IndianRupee size={16} />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <h3 className="font-bold text-slate-900 text-sm md:text-base leading-tight">{t.name}</h3>
                           {isCollapsedMode && (
-                            <span className="text-[8px] md:text-[9px] text-slate-400 font-bold bg-slate-50 group-hover:bg-blue-50 group-hover:text-blue-600 px-1 py-0.5 rounded transition-colors shrink-0">
+                            <span className="text-[8px] md:text-[9px] text-slate-400 font-bold bg-slate-50 group-hover:bg-blue-50 group-hover:text-blue-600 px-1 py-0.5 rounded transition-colors shrink-0 print:hidden">
                               {expandedIds.has(t.id) ? '▲ Hide' : '▼ Details'}
                             </span>
                           )}
@@ -492,14 +515,14 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
                   </div>
 
                   <div className="flex flex-row items-center justify-between sm:justify-end gap-4" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex flex-col">
+                    <div className="flex flex-col print:text-right">
                       <span className="text-slate-400 text-[8px] font-black uppercase tracking-wider">Balance Due</span>
                       <span className="text-base md:text-xl font-black text-rose-600 leading-tight">₹{t.creditAmount.toLocaleString('en-IN')}</span>
                       <span className="text-[9px] text-slate-400 font-medium">Total: ₹{t.totalAmount}</span>
                     </div>
 
                     {isExpanded && (
-                      <div className="flex items-center">
+                      <div className="flex items-center print:hidden">
                         <button 
                           disabled={permissions?.canEdit === false}
                           onClick={() => permissions?.canEdit !== false && setPaymentModal({ id: t.id, amount: t.creditAmount, paymentMethod: 'CASH' })}
@@ -518,60 +541,66 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
                   </div>
                 </div>
 
-                {isExpanded && (
-                  <div className="mt-3 pt-3 border-t border-slate-100 space-y-3 animate-in slide-in-from-top-1 duration-200" onClick={(e) => e.stopPropagation()}>
-                    {t.paymentHistory && t.paymentHistory.length > 0 && (
-                      <div>
-                        <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Payment History</p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {t.paymentHistory.map((entry) => {
-                            const mLabel = entry.paymentMethod 
-                              ? (customPaymentLabels?.[entry.paymentMethod] || DEFAULT_PAYMENT_LABELS[entry.paymentMethod])
-                              : 'Cash';
-                            return (
-                              <div key={entry.id} className="bg-slate-50 px-2 py-1 rounded-lg flex items-center gap-1">
-                                <CheckCircle2 size={10} className="text-emerald-500 shrink-0" />
-                                <span className="text-[10px] font-bold text-slate-700 font-sans">₹{entry.amount}</span>
-                                <span className="text-[8px] text-slate-400 font-black uppercase tracking-wider bg-white px-1 py-0.5 rounded border border-slate-100">
-                                  {mLabel}
-                                </span>
-                                <span className="text-[9px] text-slate-400">{format(new Date(entry.date), 'dd.MM.yyyy')}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
+                <div
+                  className={cn(
+                    "mt-3 pt-2.5 border-t border-slate-100 space-y-2.5",
+                    isExpanded ? "block animate-in slide-in-from-top-1 duration-200" : "hidden print:block"
+                  )}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {t.paymentHistory && t.paymentHistory.length > 0 && (
+                    <div>
+                      <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Payment History</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {t.paymentHistory.map((entry) => {
+                          const mLabel = entry.paymentMethod 
+                            ? (customPaymentLabels?.[entry.paymentMethod] || DEFAULT_PAYMENT_LABELS[entry.paymentMethod])
+                            : 'Cash';
+                          return (
+                            <div key={entry.id} className="bg-slate-50 px-2 py-1 rounded-lg flex items-center gap-1">
+                              <CheckCircle2 size={10} className="text-emerald-500 shrink-0" />
+                              <span className="text-[10px] font-bold text-slate-700 font-sans">₹{entry.amount}</span>
+                              <span className="text-[8px] text-slate-400 font-black uppercase tracking-wider bg-white px-1 py-0.5 rounded border border-slate-100">
+                                {mLabel}
+                              </span>
+                              <span className="text-[9px] text-slate-400">{format(new Date(entry.date), 'dd.MM.yyyy')}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 text-[9px] md:text-[10px] font-semibold text-slate-500 pt-1">
+                    <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
+                      Books: <span className="text-slate-900 font-bold">{t.books}</span>
+                    </div>
+                    <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
+                      Coupons: <span className="text-slate-900 font-bold">{t.coupons}</span>
+                    </div>
+                    {t.bookNumber && (
+                      <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
+                        Book No: <span className="text-slate-900 font-bold">{t.bookNumber}</span>
                       </div>
                     )}
-
-                    <div className="flex flex-wrap gap-2 text-[9px] md:text-[10px] font-semibold text-slate-500 pt-1.5">
+                    {t.phone && (
                       <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
-                        Books: <span className="text-slate-900 font-bold">{t.books}</span>
+                        Mobile: <span className="text-slate-900 font-bold">{t.phone}</span>
                       </div>
-                      <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
-                        Coupons: <span className="text-slate-900 font-bold">{t.coupons}</span>
+                    )}
+                    {resolvedCouponRange ? (
+                      <div className="bg-blue-50 text-blue-900 border border-blue-100/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 font-semibold">
+                        <span className="text-blue-700">Coupon No:</span>
+                        <span className="text-blue-950 font-bold font-mono">
+                          {resolvedCouponRange}
+                        </span>
                       </div>
-                      {t.bookNumber && (
-                        <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
-                          Book No: <span className="text-slate-900 font-bold">{t.bookNumber}</span>
-                        </div>
-                      )}
-                      {t.phone && (
-                        <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
-                          Mobile: <span className="text-slate-900 font-bold">{t.phone}</span>
-                        </div>
-                      )}
-                      {Boolean(t.couponNumber || (t.bookNumber && calculateCouponRangeFromBookString(t.bookNumber))) ? (
-                        <div className="bg-blue-50 text-blue-900 border border-blue-100/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 font-semibold">
-                          <span className="text-blue-700">Coupon No:</span>
-                          <span className="text-blue-950 font-bold font-mono">
-                            {t.couponNumber || calculateCouponRangeFromBookString(t.bookNumber)}
-                          </span>
-                        </div>
-                      ) : null}
-                    </div>
+                    ) : null}
+                  </div>
 
-                    {/* Action buttons inside expanded card */}
-                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100">
+                  {/* Action buttons inside expanded card */}
+                  {isExpanded && (
+                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-slate-100 print:hidden">
                       <button 
                         disabled={permissions?.canEdit === false}
                         onClick={() => permissions?.canEdit !== false && onEdit(t)}
@@ -601,8 +630,8 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
                         </button>
                       )}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })

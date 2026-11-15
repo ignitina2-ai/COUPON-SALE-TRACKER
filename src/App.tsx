@@ -2082,96 +2082,109 @@ export default function App() {
         </div>
 
         {/* Page Content */}
-        <div className="p-4 md:p-8 max-w-7xl mx-auto relative animate-fade-in">
-          {/* Printable formal header */}
-          <div className="hidden print:block print-header">
-            <div className="flex items-center justify-between border-b pb-2 mb-4 border-slate-900 font-sans">
-              <div className="flex items-center gap-3">
-                {resolvedLogo ? (
-                  <img src={resolvedLogo} alt="Logo" className="w-10 h-10 object-contain rounded-lg" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0">C</div>
-                )}
-                <div className="flex flex-col">
-                  <h1 className="text-sm font-black text-slate-900 uppercase tracking-tight">ST.CASIMIR CHARITABLE TRUST</h1>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">SCC TRUST LUCKY COUPON SALE 2026</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Report Date</span>
-                <span className="text-xs font-black text-slate-800">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
-              </div>
-            </div>
-          </div>
-
-          {firestoreError && (
-            <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-3xl p-6 text-slate-800 shadow-lg shadow-amber-500/5 flex flex-col md:flex-row items-start justify-between gap-6 animate-in slide-in-from-top-4 duration-500">
-              <div className="flex gap-4 items-start">
-                <div className="p-3 bg-white border border-amber-200 rounded-2xl text-amber-600 shrink-0 shadow-sm">
-                  <AlertCircle size={22} className="animate-bounce" />
-                </div>
-                <div className="space-y-1.5">
-                  <h3 className="text-sm font-black text-amber-950 uppercase tracking-wider flex items-center gap-2">
-                    Firebase Sync Notice <span className="text-[10px] text-amber-700 font-bold uppercase tracking-normal bg-amber-100 px-2 py-0.5 rounded-full">Offline Buffering Active</span>
-                  </h3>
-                  <div className="text-xs font-semibold leading-relaxed text-slate-700 space-y-2">
-                    <p>
-                      The app is currently reconnecting to the cloud database. We have successfully configured your Firestore Database for project <strong className="text-slate-900 font-black">coupon-sale-tracker</strong> and deployed security rules.
-                    </p>
-                    <p className="text-amber-800 font-bold">
-                      To troubleshoot: 1) Verify that Firestore is active in the Firebase Console. 2) Click the &quot;Reload Connections&quot; button below.
-                    </p>
-                    <div className="mt-2 bg-white/70 border border-amber-100 rounded-xl p-3">
-                      <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Detailed Technical Error Code:</span>
-                      <code className="text-[10px] font-mono text-rose-700 break-all">{firestoreError}</code>
+        <div className="p-4 md:p-8 max-w-7xl mx-auto relative animate-fade-in print-root-container">
+          <table className="print-page-shell block w-full">
+            <thead className="hidden print:table-header-group print-page-thead">
+              <tr className="print-page-tr">
+                <th className="print-page-th text-left font-normal">
+                  {/* Printable formal header */}
+                  <div className="print-header">
+                    <div className="flex items-center justify-between border-b-2 pb-2.5 mb-4 border-slate-900 font-sans">
+                      <div className="flex items-center gap-3">
+                        {resolvedLogo ? (
+                          <img src={resolvedLogo} alt="Logo" className="w-10 h-10 object-contain rounded-lg" referrerPolicy="no-referrer" />
+                        ) : (
+                          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm shrink-0">C</div>
+                        )}
+                        <div className="flex flex-col">
+                          <h1 className="text-sm font-black text-slate-900 uppercase tracking-tight">ST.CASIMIR CHARITABLE TRUST</h1>
+                          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">SCC TRUST LUCKY COUPON SALE 2026</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Report Date</span>
+                        <span className="text-xs font-black text-slate-800">{new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 w-full md:w-auto shrink-0 md:self-center">
-                <button 
-                  onClick={() => {
-                    setFirestoreError(null);
-                    window.location.reload();
-                  }}
-                  className="w-full md:w-auto px-5 py-3 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-amber-600/20 cursor-pointer"
-                >
-                  Reload Connections
-                </button>
-              </div>
-            </div>
-          )}
+                </th>
+              </tr>
+            </thead>
+            <tbody className="block w-full print-page-tbody">
+              <tr className="block w-full print-page-tr">
+                <td className="block w-full p-0 border-0 print-page-td">
+                  {firestoreError && (
+                    <div className="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-3xl p-6 text-slate-800 shadow-lg shadow-amber-500/5 flex flex-col md:flex-row items-start justify-between gap-6 animate-in slide-in-from-top-4 duration-500">
+                      <div className="flex gap-4 items-start">
+                        <div className="p-3 bg-white border border-amber-200 rounded-2xl text-amber-600 shrink-0 shadow-sm">
+                          <AlertCircle size={22} className="animate-bounce" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <h3 className="text-sm font-black text-amber-950 uppercase tracking-wider flex items-center gap-2">
+                            Firebase Sync Notice <span className="text-[10px] text-amber-700 font-bold uppercase tracking-normal bg-amber-100 px-2 py-0.5 rounded-full">Offline Buffering Active</span>
+                          </h3>
+                          <div className="text-xs font-semibold leading-relaxed text-slate-700 space-y-2">
+                            <p>
+                              The app is currently reconnecting to the cloud database. We have successfully configured your Firestore Database for project <strong className="text-slate-900 font-black">coupon-sale-tracker</strong> and deployed security rules.
+                            </p>
+                            <p className="text-amber-800 font-bold">
+                              To troubleshoot: 1) Verify that Firestore is active in the Firebase Console. 2) Click the &quot;Reload Connections&quot; button below.
+                            </p>
+                            <div className="mt-2 bg-white/70 border border-amber-100 rounded-xl p-3">
+                              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-1">Detailed Technical Error Code:</span>
+                              <code className="text-[10px] font-mono text-rose-700 break-all">{firestoreError}</code>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 w-full md:w-auto shrink-0 md:self-center">
+                        <button 
+                          onClick={() => {
+                            setFirestoreError(null);
+                            window.location.reload();
+                          }}
+                          className="w-full md:w-auto px-5 py-3 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-all shadow-md shadow-amber-600/20 cursor-pointer"
+                        >
+                          Reload Connections
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-          {showNotificationPrompt && (
-            <div className="mb-6 bg-blue-600 rounded-3xl p-6 text-white shadow-xl shadow-blue-600/20 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                  <BellRing className="text-white" size={24} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-black tracking-tight">Enable Push Notifications</h3>
-                  <p className="text-blue-100 text-sm font-medium">Get real-time updates for sales and sponsor collections.</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <button 
-                  onClick={() => setShowNotificationPrompt(false)}
-                  className="flex-1 md:flex-none px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm transition-all"
-                >
-                  Later
-                </button>
-                <button 
-                  onClick={handleRequestPermission}
-                  className="flex-1 md:flex-none px-6 py-3 bg-white text-blue-600 rounded-xl font-bold text-sm shadow-lg hover:bg-blue-50 transition-all active:scale-95"
-                >
-                  Enable Now
-                </button>
-              </div>
-            </div>
-          )}
-          <div key={activeTab} className="page-transition-enter">
-            {renderContent()}
-          </div>
+                  {showNotificationPrompt && (
+                    <div className="mb-6 bg-blue-600 rounded-3xl p-6 text-white shadow-xl shadow-blue-600/20 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                          <BellRing className="text-white" size={24} />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-black tracking-tight">Enable Push Notifications</h3>
+                          <p className="text-blue-100 text-sm font-medium">Get real-time updates for sales and sponsor collections.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 w-full md:w-auto">
+                        <button 
+                          onClick={() => setShowNotificationPrompt(false)}
+                          className="flex-1 md:flex-none px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm transition-all"
+                        >
+                          Later
+                        </button>
+                        <button 
+                          onClick={handleRequestPermission}
+                          className="flex-1 md:flex-none px-6 py-3 bg-white text-blue-600 rounded-xl font-bold text-sm shadow-lg hover:bg-blue-50 transition-all active:scale-95"
+                        >
+                          Enable Now
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <div key={activeTab} className="page-transition-enter">
+                    {renderContent()}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </main>
 
