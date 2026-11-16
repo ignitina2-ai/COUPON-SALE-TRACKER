@@ -748,8 +748,34 @@ const TransactionList: React.FC<TransactionListProps> = ({
         </div>
       </header>
 
+      {/* Print-only Title & Summary Header */}
+      <div className="hidden print:flex items-center justify-between bg-slate-50 border border-slate-300 px-3 py-2 mb-3">
+        <div>
+          <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Transaction History — Sales Ledger</h2>
+          <p className="text-[10px] font-semibold text-slate-600">Coupon Sales, Book &amp; Payment Details Report</p>
+        </div>
+        <div className="flex items-center gap-4 text-right">
+          <div>
+            <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">Sales</span>
+            <span className="text-xs font-black text-slate-900">{filteredTransactions.length}</span>
+          </div>
+          <div>
+            <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">Books</span>
+            <span className="text-xs font-black text-slate-900">{filteredTransactions.reduce((acc, t) => acc + (t.books || 0), 0)}</span>
+          </div>
+          <div>
+            <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">Coupons</span>
+            <span className="text-xs font-black text-slate-900">{filteredTransactions.reduce((acc, t) => acc + (t.coupons || 0), 0)}</span>
+          </div>
+          <div>
+            <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider block">Total Sales</span>
+            <span className="text-xs font-black text-slate-900">₹{filteredTransactions.reduce((acc, t) => acc + (t.totalAmount || 0), 0).toLocaleString('en-IN')}</span>
+          </div>
+        </div>
+      </div>
+
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-2 md:p-3 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-2 md:p-3 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm print:hidden">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
           <input 
@@ -782,7 +808,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
 
       {/* Select All Checkbox (Top of List) */}
       {filteredTransactions.length > 0 && (
-        <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-slate-100 rounded-lg md:rounded-xl shadow-sm">
+        <div className="flex items-center gap-2 bg-white px-3 py-1.5 border border-slate-100 rounded-lg md:rounded-xl shadow-sm print:hidden">
           <input 
             type="checkbox"
             className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
@@ -807,239 +833,283 @@ const TransactionList: React.FC<TransactionListProps> = ({
             <p className="text-slate-400 text-xs">Try adjusting your filters</p>
           </div>
         ) : (
-          filteredTransactions.map((t) => (
-            <div 
-              key={t.id} 
-              className={cn(
-                "p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all group",
-                selectedIds.has(t.id) ? "bg-blue-50/50 border-blue-200" : "bg-white border-slate-100 shadow-sm hover:shadow"
-              )}
-            >
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div className="flex items-start gap-1.5 md:gap-2 flex-1">
-                  {permissions?.canDelete !== false && (
-                    <div className="mt-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      <input 
-                        type="checkbox"
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
-                        checked={selectedIds.has(t.id)}
-                        onChange={() => toggleSelect(t.id)}
-                      />
-                    </div>
-                  )}
+          filteredTransactions.map((t) => {
+            const isExpanded = !isCollapsedMode || expandedIds.has(t.id);
+            const resolvedCouponRange = t.couponNumber || (t.bookNumber ? calculateCouponRangeFromBookString(t.bookNumber) : '');
+            return (
+              <div 
+                key={t.id} 
+                className={cn(
+                  "p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all group page-break-inside-avoid",
+                  selectedIds.has(t.id) ? "bg-blue-50/50 border-blue-200" : "bg-white border-slate-100 shadow-sm hover:shadow"
+                )}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 print:flex-row print:items-center">
+                  <div className="flex items-start gap-1.5 md:gap-2 flex-1">
+                    {permissions?.canDelete !== false && (
+                      <div className="mt-1 shrink-0 print:hidden" onClick={(e) => e.stopPropagation()}>
+                        <input 
+                          type="checkbox"
+                          className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
+                          checked={selectedIds.has(t.id)}
+                          onChange={() => toggleSelect(t.id)}
+                        />
+                      </div>
+                    )}
 
-                  {/* 3-dot Action Menu Icon on Left Side (specifically for Mobile & Quick Actions) */}
-                  <div className="relative mt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      onClick={() => setOpenMenuId(openMenuId === t.id ? null : t.id)}
-                      className={cn(
-                        "p-1 rounded-md transition-all cursor-pointer",
-                        openMenuId === t.id ? "bg-blue-100 text-blue-700" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                      )}
-                      title="Quick Actions Menu"
-                      aria-label="Quick Actions"
-                    >
-                      <MoreVertical size={16} />
-                    </button>
-                    {openMenuId === t.id && (
-                      <div className="absolute left-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150">
-                        {onEdit && permissions?.canEdit !== false && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              onEdit(t);
-                            }}
-                            className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2 cursor-pointer transition-colors"
-                          >
-                            <Edit2 size={13} className="text-blue-500" />
-                            <span>Edit Sale</span>
-                          </button>
+                    {/* 3-dot Action Menu Icon on Left Side (specifically for Mobile & Quick Actions) */}
+                    <div className="relative mt-0.5 shrink-0 print:hidden" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenuId(openMenuId === t.id ? null : t.id)}
+                        className={cn(
+                          "p-1 rounded-md transition-all cursor-pointer",
+                          openMenuId === t.id ? "bg-blue-100 text-blue-700" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
                         )}
-                        {permissions?.canShareReport !== false && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              const paymentLabel = customPaymentLabels?.[t.paymentMethod] || DEFAULT_PAYMENT_LABELS[t.paymentMethod] || t.paymentMethod;
-                              shareTransactionReceiptCard(t, paymentLabel);
-                            }}
-                            className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2 cursor-pointer transition-colors"
-                          >
-                            <Share2 size={13} className="text-indigo-500" />
-                            <span>Share Card</span>
-                          </button>
-                        )}
-                        {permissions?.canEdit !== false && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenuId(null);
-                              onToggleTreasurer(t.id);
-                            }}
-                            className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 cursor-pointer transition-colors"
-                          >
-                            {t.paidToTreasurer ? <XCircle size={13} className="text-slate-400" /> : <CheckCircle size={13} className="text-emerald-500" />}
-                            <span>{t.paidToTreasurer ? 'Mark as Unpaid' : 'Mark as Paid'}</span>
-                          </button>
-                        )}
-                        {permissions?.canDelete !== false && (
-                          <>
-                            <div className="my-1 border-t border-slate-100" />
+                        title="Quick Actions Menu"
+                        aria-label="Quick Actions"
+                      >
+                        <MoreVertical size={16} />
+                      </button>
+                      {openMenuId === t.id && (
+                        <div className="absolute left-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-40 animate-in fade-in zoom-in-95 duration-150">
+                          {onEdit && permissions?.canEdit !== false && (
                             <button
                               type="button"
                               onClick={() => {
                                 setOpenMenuId(null);
-                                setDeleteIds([t.id]);
+                                onEdit(t);
                               }}
-                              className="w-full px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer transition-colors"
+                              className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-blue-50 hover:text-blue-600 flex items-center gap-2 cursor-pointer transition-colors"
                             >
-                              <Trash2 size={13} className="text-rose-500" />
-                              <span>Delete Sale</span>
+                              <Edit2 size={13} className="text-blue-500" />
+                              <span>Edit Sale</span>
                             </button>
-                          </>
+                          )}
+                          {permissions?.canShareReport !== false && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                const paymentLabel = customPaymentLabels?.[t.paymentMethod] || DEFAULT_PAYMENT_LABELS[t.paymentMethod] || t.paymentMethod;
+                                shareTransactionReceiptCard(t, paymentLabel);
+                              }}
+                              className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 flex items-center gap-2 cursor-pointer transition-colors"
+                            >
+                              <Share2 size={13} className="text-indigo-500" />
+                              <span>Share Card</span>
+                            </button>
+                          )}
+                          {permissions?.canEdit !== false && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenuId(null);
+                                onToggleTreasurer(t.id);
+                              }}
+                              className="w-full px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 flex items-center gap-2 cursor-pointer transition-colors"
+                            >
+                              {t.paidToTreasurer ? <XCircle size={13} className="text-slate-400" /> : <CheckCircle size={13} className="text-emerald-500" />}
+                              <span>{t.paidToTreasurer ? 'Mark as Unpaid' : 'Mark as Paid'}</span>
+                            </button>
+                          )}
+                          {permissions?.canDelete !== false && (
+                            <>
+                              <div className="my-1 border-t border-slate-100" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenMenuId(null);
+                                  setDeleteIds([t.id]);
+                                }}
+                                className="w-full px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer transition-colors"
+                              >
+                                <Trash2 size={13} className="text-rose-500" />
+                                <span>Delete Sale</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-blue-50 p-2 rounded-lg md:rounded-xl text-blue-600 ml-0.5 cursor-pointer select-none print:hidden" onClick={() => toggleExpand(t.id)}>
+                      <User size={16} className="md:w-5 md:h-5" />
+                    </div>
+                    <div className="flex-1 cursor-pointer select-none" onClick={() => toggleExpand(t.id)}>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-bold text-slate-900 text-sm md:text-base leading-tight">{t.name}</h3>
+                        {isCollapsedMode && (
+                          <span className="text-[8px] md:text-[9px] text-slate-400 font-bold bg-slate-100 group-hover:bg-blue-50 group-hover:text-blue-600 px-1 py-0.5 rounded transition-colors shrink-0 print:hidden">
+                            {expandedIds.has(t.id) ? '▲ Hide' : '▼ Details'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2.5 mt-0.5 text-slate-500 text-[9px] md:text-[11px] font-semibold">
+                        <span className="flex items-center gap-0.5"><MapPin size={10} /> {t.area}</span>
+                        <span className="flex items-center gap-0.5"><Calendar size={10} /> {format(new Date(t.date), 'dd.MM.yyyy')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3 sm:text-right sm:justify-end ml-6 sm:ml-0 print:ml-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex flex-col">
+                      <span className="text-slate-400 text-[8px] font-bold uppercase tracking-wider">Amount</span>
+                      <span className="text-sm md:text-base font-black text-slate-900">₹{t.totalAmount.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-slate-400 text-[8px] font-bold uppercase tracking-wider">Method</span>
+                      <div className="flex items-center gap-1 font-semibold text-slate-700 text-[10px] md:text-xs">
+                        <PaymentIcon method={t.paymentMethod} />
+                        <span className="truncate max-w-[65px] sm:max-w-none">
+                          {customPaymentLabels?.[t.paymentMethod] || DEFAULT_PAYMENT_LABELS[t.paymentMethod] || t.paymentMethod.replace('_', ' ')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-slate-400 text-[8px] font-bold uppercase tracking-wider">Treasurer</span>
+                      <button 
+                        disabled={permissions?.canEdit === false}
+                        onClick={() => permissions?.canEdit !== false && onToggleTreasurer(t.id)}
+                        className={cn(
+                          "flex items-center gap-0.5 font-bold text-[9px] md:text-[10px] px-1.5 py-0.5 md:px-2 md:py-1 rounded-full transition-all",
+                          permissions?.canEdit === false ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "cursor-pointer",
+                          t.paidToTreasurer 
+                            ? (permissions?.canEdit === false ? "bg-slate-100 text-emerald-400/60" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100") 
+                            : (permissions?.canEdit === false ? "bg-slate-100 text-slate-300" : "bg-slate-50 text-slate-400 hover:bg-slate-100")
+                        )}
+                      >
+                        {t.paidToTreasurer ? <CheckCircle size={10} /> : <XCircle size={10} />}
+                        {t.paidToTreasurer ? 'Paid' : 'Pending'}
+                      </button>
+                      <span
+                        className={cn(
+                          "hidden print:inline-flex items-center gap-0.5 font-bold text-[9px] px-1.5 py-0.5 rounded-full border",
+                          t.paidToTreasurer
+                            ? "border-emerald-400 text-emerald-700"
+                            : "border-slate-300 text-slate-500"
+                        )}
+                      >
+                        {t.paidToTreasurer ? 'Paid' : 'Pending'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div
+                  className={cn(
+                    "mt-2 pt-2 border-t border-slate-100 space-y-2",
+                    isExpanded ? "block animate-in slide-in-from-top-1 duration-200" : "hidden print:block"
+                  )}
+                >
+                  {t.paymentHistory && t.paymentHistory.length > 0 && (
+                    <div>
+                      <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Payment History</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {t.paymentHistory.map((entry) => {
+                          const mLabel = entry.paymentMethod 
+                            ? (customPaymentLabels?.[entry.paymentMethod] || DEFAULT_PAYMENT_LABELS[entry.paymentMethod] || entry.paymentMethod)
+                            : 'Cash';
+                          return (
+                            <div key={entry.id} className="bg-slate-50 px-2 py-0.5 rounded-md flex items-center gap-1 border border-slate-100">
+                              <CheckCircle size={10} className="text-emerald-500 shrink-0" />
+                              <span className="text-[10px] font-bold text-slate-700 font-sans">₹{entry.amount.toLocaleString('en-IN')}</span>
+                              <span className="text-[8px] text-slate-500 font-black uppercase tracking-wider bg-white px-1 py-0.5 rounded border border-slate-100">
+                                {mLabel}
+                              </span>
+                              <span className="text-[9px] text-slate-400">{format(new Date(entry.date), 'dd.MM.yyyy')}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-2 text-[9px] md:text-[10px] font-semibold text-slate-500">
+                    <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
+                      Books: <span className="text-slate-900 font-bold">{t.books}</span>
+                    </div>
+                    <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
+                      Coupons: <span className="text-slate-900 font-bold">{t.coupons}</span>
+                    </div>
+                    {t.bookNumber && (
+                      <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
+                        Book No: <span className="text-slate-900 font-bold">{t.bookNumber}</span>
+                      </div>
+                    )}
+                    {t.phone && (
+                      <div className="bg-slate-50 px-1.5 py-0.5 rounded-md text-slate-600">
+                        Mobile: <span className="text-slate-900 font-bold">{t.phone}</span>
+                      </div>
+                    )}
+                    {resolvedCouponRange ? (
+                      <div className="bg-blue-50 text-blue-900 border border-blue-100/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 font-semibold">
+                        <span className="text-blue-700">Coupon No:</span>
+                        <span className="text-blue-950 font-bold font-mono">
+                          {resolvedCouponRange}
+                        </span>
+                      </div>
+                    ) : null}
+                    {t.creditAmount > 0 && (
+                      <div className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shrink-0">
+                        Credit: ₹{t.creditAmount.toLocaleString('en-IN')}
+                      </div>
+                    )}
+                    
+                    {/* Action buttons in expanded mode */}
+                    {isExpanded && (
+                      <div className="ml-auto flex items-center gap-1.5 print:hidden" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          disabled={permissions?.canShareReport === false}
+                          onClick={() => {
+                            if (permissions?.canShareReport !== false) {
+                              const paymentLabel = customPaymentLabels?.[t.paymentMethod] || DEFAULT_PAYMENT_LABELS[t.paymentMethod] || t.paymentMethod;
+                              shareTransactionReceiptCard(t, paymentLabel);
+                            }
+                          }}
+                          className={cn(
+                            "flex items-center gap-0.5 px-2 py-0.5 rounded-md font-bold text-[9px] md:text-[10px] transition-all",
+                            permissions?.canShareReport === false
+                              ? "bg-slate-100 text-slate-400 cursor-not-allowed opacity-50"
+                              : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100 cursor-pointer"
+                          )}
+                          title={permissions?.canShareReport === false ? "Restricted from sharing receipt cards" : "Share Receipt Card"}
+                        >
+                          <Share2 size={10} />
+                          Share Card
+                        </button>
+                        {onEdit && (
+                          <button 
+                            disabled={permissions?.canEdit === false}
+                            onClick={() => permissions?.canEdit !== false && onEdit(t)}
+                            className={cn(
+                              "flex items-center gap-0.5 px-2 py-0.5 rounded-md font-bold text-[9px] md:text-[10px] transition-all",
+                              permissions?.canEdit === false
+                                ? "bg-slate-100 text-slate-400 cursor-not-allowed opacity-50"
+                                : "bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer"
+                            )}
+                          >
+                            <Edit2 size={10} />
+                            Edit
+                          </button>
+                        )}
+                        {permissions?.canDelete !== false && (
+                          <button 
+                            disabled={permissions?.canDelete === false}
+                            onClick={() => permissions?.canDelete !== false && setDeleteIds([t.id])}
+                            className="flex items-center gap-0.5 px-2 py-0.5 rounded-md font-bold text-[9px] md:text-[10px] transition-all bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100/50 cursor-pointer"
+                          >
+                            <Trash2 size={10} />
+                            Delete
+                          </button>
                         )}
                       </div>
                     )}
                   </div>
-
-                  <div className="bg-blue-50 p-2 rounded-lg md:rounded-xl text-blue-600 ml-0.5 cursor-pointer select-none" onClick={() => toggleExpand(t.id)}>
-                    <User size={16} className="md:w-5 md:h-5" />
-                  </div>
-                  <div className="flex-1 cursor-pointer select-none" onClick={() => toggleExpand(t.id)}>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <h3 className="font-bold text-slate-900 text-sm md:text-base leading-tight">{t.name}</h3>
-                      {isCollapsedMode && (
-                        <span className="text-[8px] md:text-[9px] text-slate-400 font-bold bg-slate-100 group-hover:bg-blue-50 group-hover:text-blue-600 px-1 py-0.5 rounded transition-colors shrink-0">
-                          {expandedIds.has(t.id) ? '▲ Hide' : '▼ Details'}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2.5 mt-0.5 text-slate-500 text-[9px] md:text-[11px] font-semibold">
-                      <span className="flex items-center gap-0.5"><MapPin size={10} /> {t.area}</span>
-                      <span className="flex items-center gap-0.5"><Calendar size={10} /> {format(new Date(t.date), 'dd.MM.yyyy')}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 sm:text-right sm:justify-end ml-6 sm:ml-0" onClick={(e) => e.stopPropagation()}>
-                  <div className="flex flex-col">
-                    <span className="text-slate-400 text-[8px] font-bold uppercase tracking-wider">Amount</span>
-                    <span className="text-sm md:text-base font-black text-slate-900">₹{t.totalAmount.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-slate-400 text-[8px] font-bold uppercase tracking-wider">Method</span>
-                    <div className="flex items-center gap-1 font-semibold text-slate-700 text-[10px] md:text-xs">
-                      <PaymentIcon method={t.paymentMethod} />
-                      <span className="truncate max-w-[65px] sm:max-w-none">
-                        {customPaymentLabels?.[t.paymentMethod] || DEFAULT_PAYMENT_LABELS[t.paymentMethod] || t.paymentMethod.replace('_', ' ')}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-slate-400 text-[8px] font-bold uppercase tracking-wider">Treasurer</span>
-                    <button 
-                      disabled={permissions?.canEdit === false}
-                      onClick={() => permissions?.canEdit !== false && onToggleTreasurer(t.id)}
-                      className={cn(
-                        "flex items-center gap-0.5 font-bold text-[9px] md:text-[10px] px-1.5 py-0.5 md:px-2 md:py-1 rounded-full transition-all",
-                        permissions?.canEdit === false ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "cursor-pointer",
-                        t.paidToTreasurer 
-                          ? (permissions?.canEdit === false ? "bg-slate-100 text-emerald-400/60" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100") 
-                          : (permissions?.canEdit === false ? "bg-slate-100 text-slate-300" : "bg-slate-50 text-slate-400 hover:bg-slate-100")
-                      )}
-                    >
-                      {t.paidToTreasurer ? <CheckCircle size={10} /> : <XCircle size={10} />}
-                      {t.paidToTreasurer ? 'Paid' : 'Pending'}
-                    </button>
-                  </div>
                 </div>
               </div>
-              
-              {(!isCollapsedMode || expandedIds.has(t.id)) && (
-                <div className="mt-2 pt-2 border-t border-slate-100 flex flex-wrap gap-2 text-[9px] md:text-[10px] font-semibold text-slate-500 animate-in slide-in-from-top-1 duration-200">
-                  <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
-                    Books: <span className="text-slate-900 font-bold">{t.books}</span>
-                  </div>
-                  <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
-                    Coupons: <span className="text-slate-900 font-bold">{t.coupons}</span>
-                  </div>
-                  {t.bookNumber && (
-                    <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
-                      Book No: <span className="text-slate-900 font-bold">{t.bookNumber}</span>
-                    </div>
-                  )}
-                  {t.phone && (
-                    <div className="bg-slate-50 px-1.5 py-0.5 rounded-md text-slate-600">
-                      Mobile: <span className="text-slate-900 font-bold">{t.phone}</span>
-                    </div>
-                  )}
-                  {Boolean(t.couponNumber || (t.bookNumber && calculateCouponRangeFromBookString(t.bookNumber))) ? (
-                    <div className="bg-blue-50 text-blue-900 border border-blue-100/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 font-semibold">
-                      <span className="text-blue-700">Coupon No:</span>
-                      <span className="text-blue-950 font-bold font-mono">
-                        {t.couponNumber || calculateCouponRangeFromBookString(t.bookNumber)}
-                      </span>
-                    </div>
-                  ) : null}
-                  {t.creditAmount > 0 && (
-                    <div className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shrink-0">
-                      Credit: ₹{t.creditAmount.toLocaleString('en-IN')}
-                    </div>
-                  )}
-                  
-                  {/* Action buttons in expanded mode */}
-                  <div className="ml-auto flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    <button 
-                      disabled={permissions?.canShareReport === false}
-                      onClick={() => {
-                        if (permissions?.canShareReport !== false) {
-                          const paymentLabel = customPaymentLabels?.[t.paymentMethod] || DEFAULT_PAYMENT_LABELS[t.paymentMethod] || t.paymentMethod;
-                          shareTransactionReceiptCard(t, paymentLabel);
-                        }
-                      }}
-                      className={cn(
-                        "flex items-center gap-0.5 px-2 py-0.5 rounded-md font-bold text-[9px] md:text-[10px] transition-all",
-                        permissions?.canShareReport === false
-                          ? "bg-slate-100 text-slate-400 cursor-not-allowed opacity-50"
-                          : "bg-indigo-50 text-indigo-600 hover:bg-indigo-100 cursor-pointer"
-                      )}
-                      title={permissions?.canShareReport === false ? "Restricted from sharing receipt cards" : "Share Receipt Card"}
-                    >
-                      <Share2 size={10} />
-                      Share Card
-                    </button>
-                    {onEdit && (
-                      <button 
-                        disabled={permissions?.canEdit === false}
-                        onClick={() => permissions?.canEdit !== false && onEdit(t)}
-                        className={cn(
-                          "flex items-center gap-0.5 px-2 py-0.5 rounded-md font-bold text-[9px] md:text-[10px] transition-all",
-                          permissions?.canEdit === false
-                            ? "bg-slate-100 text-slate-400 cursor-not-allowed opacity-50"
-                            : "bg-blue-50 text-blue-600 hover:bg-blue-100 cursor-pointer"
-                        )}
-                      >
-                        <Edit2 size={10} />
-                        Edit
-                      </button>
-                    )}
-                    {permissions?.canDelete !== false && (
-                      <button 
-                        disabled={permissions?.canDelete === false}
-                        onClick={() => permissions?.canDelete !== false && setDeleteIds([t.id])}
-                        className="flex items-center gap-0.5 px-2 py-0.5 rounded-md font-bold text-[9px] md:text-[10px] transition-all bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-100/50 cursor-pointer"
-                      >
-                        <Trash2 size={10} />
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
