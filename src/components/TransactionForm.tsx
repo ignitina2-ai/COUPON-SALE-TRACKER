@@ -357,6 +357,12 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         creditAmount: finalCreditAmount,
         paymentMethod: formData.paymentMethod,
         paidToTreasurer: false,
+        paymentHistory: finalPaidAmount > 0 ? [{
+          id: Math.random().toString(36).slice(2, 11),
+          amount: finalPaidAmount,
+          date: finalDateStr,
+          paymentMethod: formData.paymentMethod === 'CREDIT' ? 'CASH' : formData.paymentMethod,
+        }] : [],
       });
     }
 

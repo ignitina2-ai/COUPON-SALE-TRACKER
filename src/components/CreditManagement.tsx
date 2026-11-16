@@ -543,7 +543,7 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
 
                 <div
                   className={cn(
-                    "mt-3 pt-2.5 border-t border-slate-100 space-y-2.5",
+                    "mt-3 pt-2.5 border-t border-slate-100 space-y-2.5 print-details-panel",
                     isExpanded ? "block animate-in slide-in-from-top-1 duration-200" : "hidden print:block"
                   )}
                   onClick={(e) => e.stopPropagation()}

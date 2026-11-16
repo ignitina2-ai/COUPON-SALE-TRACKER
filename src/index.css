@@ -189,6 +189,24 @@ body {
     display: block !important;
   }
 
+  .print-details-panel {
+    display: block !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  .print-only-flex {
+    display: flex !important;
+  }
+
+  .print-only-inline-flex {
+    display: inline-flex !important;
+  }
+
+  .print-only-inline-block {
+    display: inline-block !important;
+  }
+
   /* Preserve table structures and optimize layout for A4 document flow */
   table {
     width: 100% !important;

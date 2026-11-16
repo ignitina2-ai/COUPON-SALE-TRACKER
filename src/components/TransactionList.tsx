@@ -70,12 +70,40 @@ const TransactionList: React.FC<TransactionListProps> = ({
   const [isCollapsedMode, setIsCollapsedMode] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [isPrinting, setIsPrinting] = useState(false);
 
   useEffect(() => {
     const handleDocumentClick = () => setOpenMenuId(null);
     window.addEventListener('click', handleDocumentClick);
     return () => window.removeEventListener('click', handleDocumentClick);
   }, []);
+
+  useEffect(() => {
+    const handleBeforePrint = () => setIsPrinting(true);
+    const handleAfterPrint = () => setIsPrinting(false);
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);
+
+  const handlePrint = () => {
+    setIsPrinting(true);
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => setIsPrinting(false), 1000);
+      }, 60);
+    });
+  };
+
+  const formatSafeDate = (dateStr?: string) => {
+    if (!dateStr) return '-';
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? String(dateStr) : format(d, 'dd.MM.yyyy');
+  };
 
   // CSV Import States
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -738,7 +766,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
             CSV
           </button>
           <button 
-            onClick={() => window.print()}
+            onClick={handlePrint}
             className="flex items-center gap-1 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg md:rounded-xl text-slate-700 font-bold hover:bg-slate-50 transition-all shadow-sm text-[10px] md:text-xs cursor-pointer"
             title="Print List"
           >
@@ -749,7 +777,10 @@ const TransactionList: React.FC<TransactionListProps> = ({
       </header>
 
       {/* Print-only Title & Summary Header */}
-      <div className="hidden print:flex items-center justify-between bg-slate-50 border border-slate-300 px-3 py-2 mb-3">
+      <div className={cn(
+        "items-center justify-between bg-slate-50 border border-slate-300 px-3 py-2 mb-3 print-only-flex",
+        isPrinting ? "flex" : "hidden print:flex"
+      )}>
         <div>
           <h2 className="text-sm font-black text-slate-900 uppercase tracking-tight">Transaction History — Sales Ledger</h2>
           <p className="text-[10px] font-semibold text-slate-600">Coupon Sales, Book &amp; Payment Details Report</p>
@@ -834,8 +865,23 @@ const TransactionList: React.FC<TransactionListProps> = ({
           </div>
         ) : (
           filteredTransactions.map((t) => {
-            const isExpanded = !isCollapsedMode || expandedIds.has(t.id);
+            const isExpanded = isPrinting || !isCollapsedMode || expandedIds.has(t.id);
             const resolvedCouponRange = t.couponNumber || (t.bookNumber ? calculateCouponRangeFromBookString(t.bookNumber) : '');
+            const existingHistory = Array.isArray(t.paymentHistory) ? t.paymentHistory : [];
+            const recordedHistorySum = existingHistory.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+            const paidAmountNum = Number(t.paidAmount) || 0;
+            const unaccountedPaid = Math.max(0, paidAmountNum - recordedHistorySum);
+            const effectivePaymentHistory = [
+              ...(unaccountedPaid > 0
+                ? [{
+                    id: `${t.id}-initial`,
+                    amount: unaccountedPaid,
+                    date: t.date,
+                    paymentMethod: (t.paymentMethod === 'CREDIT' ? 'CASH' : t.paymentMethod) as PaymentMethod,
+                  }]
+                : []),
+              ...existingHistory,
+            ];
             return (
               <div 
                 key={t.id} 
@@ -939,7 +985,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                     <div className="flex-1 cursor-pointer select-none" onClick={() => toggleExpand(t.id)}>
                       <div className="flex items-center gap-1.5 flex-wrap">
                         <h3 className="font-bold text-slate-900 text-sm md:text-base leading-tight">{t.name}</h3>
-                        {isCollapsedMode && (
+                        {isCollapsedMode && !isPrinting && (
                           <span className="text-[8px] md:text-[9px] text-slate-400 font-bold bg-slate-100 group-hover:bg-blue-50 group-hover:text-blue-600 px-1 py-0.5 rounded transition-colors shrink-0 print:hidden">
                             {expandedIds.has(t.id) ? '▲ Hide' : '▼ Details'}
                           </span>
@@ -947,7 +993,7 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       </div>
                       <div className="flex items-center gap-2.5 mt-0.5 text-slate-500 text-[9px] md:text-[11px] font-semibold">
                         <span className="flex items-center gap-0.5"><MapPin size={10} /> {t.area}</span>
-                        <span className="flex items-center gap-0.5"><Calendar size={10} /> {format(new Date(t.date), 'dd.MM.yyyy')}</span>
+                        <span className="flex items-center gap-0.5"><Calendar size={10} /> {formatSafeDate(t.date)}</span>
                       </div>
                     </div>
                   </div>
@@ -984,7 +1030,8 @@ const TransactionList: React.FC<TransactionListProps> = ({
                       </button>
                       <span
                         className={cn(
-                          "hidden print:inline-flex items-center gap-0.5 font-bold text-[9px] px-1.5 py-0.5 rounded-full border",
+                          "items-center gap-0.5 font-bold text-[9px] px-1.5 py-0.5 rounded-full border print-only-inline-flex",
+                          isPrinting ? "inline-flex" : "hidden print:inline-flex",
                           t.paidToTreasurer
                             ? "border-emerald-400 text-emerald-700"
                             : "border-slate-300 text-slate-500"
@@ -998,15 +1045,16 @@ const TransactionList: React.FC<TransactionListProps> = ({
                 
                 <div
                   className={cn(
-                    "mt-2 pt-2 border-t border-slate-100 space-y-2",
-                    isExpanded ? "block animate-in slide-in-from-top-1 duration-200" : "hidden print:block"
+                    "mt-2 pt-2 border-t border-slate-100 space-y-2 print-details-panel",
+                    isExpanded ? "block" : "hidden print:block",
+                    isExpanded && !isPrinting && "animate-in slide-in-from-top-1 duration-200"
                   )}
                 >
-                  {t.paymentHistory && t.paymentHistory.length > 0 && (
-                    <div>
-                      <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Payment History</p>
+                  <div>
+                    <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Payment History</p>
+                    {effectivePaymentHistory.length > 0 ? (
                       <div className="flex flex-wrap gap-1.5">
-                        {t.paymentHistory.map((entry) => {
+                        {effectivePaymentHistory.map((entry) => {
                           const mLabel = entry.paymentMethod 
                             ? (customPaymentLabels?.[entry.paymentMethod] || DEFAULT_PAYMENT_LABELS[entry.paymentMethod] || entry.paymentMethod)
                             : 'Cash';
@@ -1017,47 +1065,59 @@ const TransactionList: React.FC<TransactionListProps> = ({
                               <span className="text-[8px] text-slate-500 font-black uppercase tracking-wider bg-white px-1 py-0.5 rounded border border-slate-100">
                                 {mLabel}
                               </span>
-                              <span className="text-[9px] text-slate-400">{format(new Date(entry.date), 'dd.MM.yyyy')}</span>
+                              <span className="text-[9px] text-slate-400">{formatSafeDate(entry.date)}</span>
                             </div>
                           );
                         })}
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="inline-flex items-center gap-1 bg-amber-50/70 text-amber-800 px-2 py-0.5 rounded-md border border-amber-200/70 text-[10px] font-bold">
+                        <span>No payment recorded yet • Credit: ₹{(t.creditAmount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="flex flex-wrap items-center gap-2 text-[9px] md:text-[10px] font-semibold text-slate-500">
                     <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
-                      Books: <span className="text-slate-900 font-bold">{t.books}</span>
+                      Books: <span className="text-slate-900 font-bold">{t.books || 0}</span>
                     </div>
                     <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
-                      Coupons: <span className="text-slate-900 font-bold">{t.coupons}</span>
+                      Coupons: <span className="text-slate-900 font-bold">{t.coupons || 0}</span>
                     </div>
-                    {t.bookNumber && (
-                      <div className="bg-slate-50 px-1.5 py-0.5 rounded-md">
-                        Book No: <span className="text-slate-900 font-bold">{t.bookNumber}</span>
-                      </div>
-                    )}
-                    {t.phone && (
-                      <div className="bg-slate-50 px-1.5 py-0.5 rounded-md text-slate-600">
-                        Mobile: <span className="text-slate-900 font-bold">{t.phone}</span>
-                      </div>
-                    )}
-                    {resolvedCouponRange ? (
-                      <div className="bg-blue-50 text-blue-900 border border-blue-100/90 px-1.5 py-0.5 rounded-md flex items-center gap-1 font-semibold">
-                        <span className="text-blue-700">Coupon No:</span>
-                        <span className="text-blue-950 font-bold font-mono">
-                          {resolvedCouponRange}
-                        </span>
-                      </div>
-                    ) : null}
-                    {t.creditAmount > 0 && (
-                      <div className="bg-amber-50 text-amber-700 px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shrink-0">
-                        Credit: ₹{t.creditAmount.toLocaleString('en-IN')}
-                      </div>
-                    )}
+                    <div className={cn(
+                      "bg-slate-50 px-1.5 py-0.5 rounded-md",
+                      !t.bookNumber && (isPrinting ? "inline-block" : "hidden print:inline-block print-only-inline-block")
+                    )}>
+                      Book No: <span className="text-slate-900 font-bold">{t.bookNumber || '-'}</span>
+                    </div>
+                    <div className={cn(
+                      "bg-blue-50 text-blue-900 border border-blue-100/90 px-1.5 py-0.5 rounded-md items-center gap-1 font-semibold",
+                      resolvedCouponRange
+                        ? "flex"
+                        : (isPrinting ? "inline-flex" : "hidden print:inline-flex print-only-inline-flex")
+                    )}>
+                      <span className="text-blue-700">Coupon No:</span>
+                      <span className="text-blue-950 font-bold font-mono">
+                        {resolvedCouponRange || '-'}
+                      </span>
+                    </div>
+                    <div className={cn(
+                      "bg-slate-50 px-1.5 py-0.5 rounded-md text-slate-600",
+                      !t.phone && (isPrinting ? "inline-block" : "hidden print:inline-block print-only-inline-block")
+                    )}>
+                      Mobile: <span className="text-slate-900 font-bold">{t.phone || '-'}</span>
+                    </div>
+                    <div className={cn(
+                      "px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider shrink-0",
+                      t.creditAmount > 0
+                        ? "bg-amber-50 text-amber-700"
+                        : (isPrinting ? "inline-block bg-slate-50 text-slate-600" : "hidden print:inline-block print-only-inline-block bg-slate-50 text-slate-600")
+                    )}>
+                      Credit: ₹{(t.creditAmount || 0).toLocaleString('en-IN')}
+                    </div>
                     
                     {/* Action buttons in expanded mode */}
-                    {isExpanded && (
+                    {isExpanded && !isPrinting && (
                       <div className="ml-auto flex items-center gap-1.5 print:hidden" onClick={(e) => e.stopPropagation()}>
                         <button 
                           disabled={permissions?.canShareReport === false}
