@@ -19,6 +19,8 @@ npm run desktop:build
 
 The NSIS installer is written to `release/`. The packaged app checks GitHub Releases when it starts, downloads a newer version automatically, and asks whether to restart and install it.
 
+The Windows app serves its packaged files on a local `localhost` origin so Firebase Google Sign-In does not run from `file://`. In Firebase Console, confirm `localhost` is listed under Authentication > Settings > Authorized domains.
+
 To publish an update, increment the version in `package.json` (and `package-lock.json`), commit the change, then push a matching `v` tag:
 
 ```powershell
