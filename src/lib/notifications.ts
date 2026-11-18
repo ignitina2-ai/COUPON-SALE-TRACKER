@@ -1,4 +1,6 @@
 
+import { publicAsset } from './publicAsset';
+
 export const requestNotificationPermission = async () => {
   if (!('Notification' in window)) {
     console.log('This browser does not support desktop notification');
@@ -24,8 +26,8 @@ export const requestNotificationPermission = async () => {
 
 export const sendNotification = (title: string, options?: NotificationOptions) => {
   const notificationOptions = {
-    icon: '/splash/mobile.jpg',
-    badge: '/notification-badge.png',
+    icon: publicAsset('splash/mobile.jpg'),
+    badge: publicAsset('notification-badge.png'),
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -62,7 +64,7 @@ export const sendNotification = (title: string, options?: NotificationOptions) =
       detail: {
         title,
         body: options?.body || '',
-        icon: '/splash/mobile.jpg'
+        icon: publicAsset('splash/mobile.jpg')
       }
     });
     window.dispatchEvent(event);

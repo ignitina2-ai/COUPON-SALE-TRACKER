@@ -4,7 +4,7 @@ import App from './App.tsx';
 import './index.css';
 
 // Register Service Worker for PWA and Push Notifications
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && window.location.protocol !== 'file:') {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js?v=6')
       .then(registration => {

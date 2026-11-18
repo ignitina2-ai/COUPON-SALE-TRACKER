@@ -8,6 +8,26 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/dfea9a9b-0b0d-4e72-96f5-ba3821d75bbb
 
+## Windows desktop app and automatic updates
+
+Install dependencies and build a Windows installer:
+
+```powershell
+npm ci
+npm run desktop:build
+```
+
+The NSIS installer is written to `release/`. The packaged app checks GitHub Releases when it starts, downloads a newer version automatically, and asks whether to restart and install it.
+
+To publish an update, increment the version in `package.json` (and `package-lock.json`), commit the change, then push a matching `v` tag:
+
+```powershell
+npm version patch
+git push origin HEAD --follow-tags
+```
+
+The `Release Windows app` GitHub Actions workflow builds the installer and publishes the update files to this repository's GitHub Release. The repository must be public for end users to download updates without embedding a private access token. Installers are unsigned unless a Windows code-signing certificate is configured.
+
 ## Run Locally
 
 **Prerequisites:**  Node.js

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { publicAsset } from './publicAsset';
 
 /**
  * Custom React hook to dynamically resolve the active app logo 
@@ -40,27 +41,27 @@ export function useActiveResponsiveLogo(appData: any) {
     // Define all folders/files candidates for both devices
     const mobileCandidates = [
       safeData.logoMobile,
-      '/splash/mobile.png',
-      '/splash/mobile.jpg',
-      '/splash/mobile.webp',
-      '/splash/mobile.svg',
-      '/logo/mobile.png',
-      '/logo/mobile.jpg',
-      '/logo/mobile.webp',
-      '/logo/mobile.svg',
+      publicAsset('splash/mobile.png'),
+      publicAsset('splash/mobile.jpg'),
+      publicAsset('splash/mobile.webp'),
+      publicAsset('splash/mobile.svg'),
+      publicAsset('logo/mobile.png'),
+      publicAsset('logo/mobile.jpg'),
+      publicAsset('logo/mobile.webp'),
+      publicAsset('logo/mobile.svg'),
       safeData.logo
     ].filter(Boolean);
 
     const desktopCandidates = [
       safeData.logoDesktop,
-      '/splash/desktop.png',
-      '/splash/desktop.jpg',
-      '/splash/desktop.webp',
-      '/splash/desktop.svg',
-      '/logo/desktop.png',
-      '/logo/desktop.jpg',
-      '/logo/desktop.webp',
-      '/logo/desktop.svg',
+      publicAsset('splash/desktop.png'),
+      publicAsset('splash/desktop.jpg'),
+      publicAsset('splash/desktop.webp'),
+      publicAsset('splash/desktop.svg'),
+      publicAsset('logo/desktop.png'),
+      publicAsset('logo/desktop.jpg'),
+      publicAsset('logo/desktop.webp'),
+      publicAsset('logo/desktop.svg'),
       safeData.logo
     ].filter(Boolean);
 
