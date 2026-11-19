@@ -18,6 +18,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { version } from '../../package.json';
 
 interface SidebarProps {
   activeTab: string;
@@ -209,7 +210,10 @@ const Sidebar: React.FC<SidebarProps> = ({
               </button>
             )}
             <div className="text-center text-[10px] text-slate-500">
-              {isOpen ? "© 2026 Coupon Management, Developed by Ignatious Joshuva" : "v1.0"}
+              {isOpen && (
+                <div>© 2026 Coupon Management, Developed by Ignatious Joshuva</div>
+              )}
+              <div>v{version}</div>
             </div>
           </div>
         </div>

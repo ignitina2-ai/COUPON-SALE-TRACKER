@@ -28,7 +28,9 @@ npm version patch
 git push origin HEAD --follow-tags
 ```
 
-The `Release Windows app` GitHub Actions workflow builds the installer and publishes the update files to this repository's GitHub Release. The repository must be public for end users to download updates without embedding a private access token. Installers are unsigned unless a Windows code-signing certificate is configured.
+For each release, also set `versionName` in `android/app/build.gradle` to match the package version and increment `versionCode`.
+
+The `Release apps` GitHub Actions workflow builds the Windows installer and Android APK, then publishes both to this repository's GitHub Release. The Android APK is debug-signed for direct installation; it is not a Play Store release. The repository must be public for end users to download Windows updates without embedding a private access token. Installers are unsigned unless a Windows code-signing certificate is configured.
 
 ## Run Locally
 
