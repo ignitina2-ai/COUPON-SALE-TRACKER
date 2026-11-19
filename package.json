@@ -8,7 +8,7 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "desktop:dev": "npm run build && electron .",
-    "desktop:build": "npm run build && electron-builder --win nsis",
+    "desktop:build": "npm run build && electron-builder --win nsis --publish never",
     "desktop:publish": "npm run build && electron-builder --win nsis --publish always",
     "cap:sync": "npm run build && npx cap sync android",
     "cap:open": "npx cap open android",
