@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Cloud, CloudOff, AlertCircle, CheckCircle, Bell, BellRing, Loader2, LogOut, Smartphone, Send, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Menu, X, Cloud, CloudOff, AlertCircle, CheckCircle, Bell, BellRing, Loader2, LogOut } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import TransactionForm from './components/TransactionForm';
@@ -32,18 +32,7 @@ import {
   getDefaultPaymentMethodsList 
 } from './types';
 import { cn } from './lib/utils';
-import {
-  sendNotification,
-  requestNotificationPermission,
-  syncPushSubscription,
-  unsubscribePushNotifications,
-  broadcastBackgroundPush,
-  setKnownPushSubscriptions,
-  getBackgroundPushStatus,
-  sendTestBackgroundNotification,
-  BackgroundPushStatus,
-  StoredPushSubscription,
-} from './lib/notifications';
+import { sendNotification, requestNotificationPermission } from './lib/notifications';
 import { publicAsset } from './lib/publicAsset';
 
 // Firebase core modules and standard handlers
@@ -103,11 +92,6 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
-  const [pushModalOpen, setPushModalOpen] = useState(false);
-  const [pushStatus, setPushStatus] = useState<BackgroundPushStatus | null>(null);
-  const [registeredPushDevices, setRegisteredPushDevices] = useState<StoredPushSubscription[]>([]);
-  const [pushActionResult, setPushActionResult] = useState<{ ok: boolean; message: string } | null>(null);
-  const [isPushBusy, setIsPushBusy] = useState(false);
 
   // Auth and sync statuses
   const [user, setUser] = useState<any>(null);
@@ -476,7 +460,6 @@ export default function App() {
               if (!hasPendingWrites) {
                 sendNotification('New Transaction Added', {
                   body: `${docData.name} - ₹${docData.totalAmount.toLocaleString('en-IN')}`,
-                  tag: `tx-${docData.id || change.doc.id}`,
                 });
               }
             }
@@ -521,7 +504,6 @@ export default function App() {
               if (!hasPendingWrites) {
                 sendNotification('New Sponsor Added', {
                   body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
-                  tag: `sp-${docData.id || change.doc.id}`,
                 });
               }
             }
@@ -566,7 +548,6 @@ export default function App() {
                 const typeProper = typeStr.charAt(0).toUpperCase() + typeStr.slice(1);
                 sendNotification(`New ${typeProper} Added`, {
                   body: `${docData.description} - ₹${docData.amount.toLocaleString('en-IN')}`,
-                  tag: `ie-${docData.id || change.doc.id}`,
                 });
               }
             }
@@ -609,7 +590,6 @@ export default function App() {
               if (!hasPendingWrites) {
                 sendNotification('Cash Handed Over', {
                   body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
-                  tag: `sh-${docData.id || change.doc.id}`,
                 });
               }
             }
@@ -720,7 +700,7 @@ export default function App() {
             logo: d.logo || '',
             logoMobile: d.logoMobile || '',
             logoDesktop: d.logoDesktop || '',
-            notificationsEnabled: d.notificationsEnabled !== undefined ? !!d.notificationsEnabled : prev.notificationsEnabled,
+            notificationsEnabled: !!d.notificationsEnabled,
             creditSettings: d.creditSettings || DEFAULT_CREDIT_SETTINGS,
             customPaymentLabels: d.customPaymentLabels || DEFAULT_PAYMENT_LABELS,
             paymentMethodsList: d.paymentMethodsList || prev.paymentMethodsList
@@ -792,7 +772,6 @@ export default function App() {
               const authorLabel = updatedBy ? ` by ${updatedBy}` : '';
               sendNotification('Prize Collection Updated', {
                 body: `Prize records updated in real-time${authorLabel}`,
-                tag: `prize-${currentTimestamp}`,
               });
             }
           }
@@ -807,22 +786,6 @@ export default function App() {
         console.warn("Prize Collection state sync notice:", err);
       });
       activeSubscriptions.push(unsubPrizeCollectionState);
-
-      // 9. Web Push Subscriptions Registry Listener & Device Auto-Registration
-      const unsubPushSubs = onSnapshot(collection(db, 'pushSubscriptions'), (snap) => {
-        const list = snap.docs.map((d) => ({ ...d.data(), id: d.id } as StoredPushSubscription));
-        setKnownPushSubscriptions(list);
-        setRegisteredPushDevices(list);
-      }, (err) => {
-        console.warn("Push subscriptions sync notice:", err);
-      });
-      activeSubscriptions.push(unsubPushSubs);
-
-      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-        void syncPushSubscription(auth.currentUser?.email).then(() => {
-          void getBackgroundPushStatus().then(setPushStatus);
-        });
-      }
     }
 
     return () => {
@@ -949,13 +912,7 @@ export default function App() {
         });
       }
 
-      // 3. Unregister closed-app push subscription for signed-out device, then sign out
-      await Promise.race([
-        unsubscribePushNotifications(true),
-        new Promise((resolve) => setTimeout(resolve, 1200)),
-      ]);
-
-      // 4. Complete Firebase Auth sign out
+      // 3. Complete Firebase Auth sign out
       await signOut(auth);
     } catch (err) {
       console.error("Logout error:", err);
@@ -1161,82 +1118,21 @@ export default function App() {
     }
   };
 
-  const refreshPushDiagnostics = async () => {
-    const status = await getBackgroundPushStatus();
-    setPushStatus(status);
-    return status;
-  };
-
   useEffect(() => {
     const checkNotificationPermission = async () => {
-      if (!('Notification' in window)) {
-        await refreshPushDiagnostics();
-        return;
-      }
-      if (Notification.permission === 'default') {
+      if ('Notification' in window && Notification.permission === 'default') {
         setShowNotificationPrompt(true);
       }
-      await refreshPushDiagnostics();
     };
-    void checkNotificationPermission();
-  }, [user, appData.notificationsEnabled]);
+    checkNotificationPermission();
+  }, []);
 
   const handleRequestPermission = async () => {
     const granted = await requestNotificationPermission();
     if (granted) {
-      await toggleNotifications(true);
+      toggleNotifications(true);
     }
-    await refreshPushDiagnostics();
     setShowNotificationPrompt(false);
-  };
-
-  const handleActivateDevicePush = async () => {
-    setIsPushBusy(true);
-    setPushActionResult(null);
-    try {
-      const granted = await requestNotificationPermission();
-      if (!granted) {
-        setPushActionResult({
-          ok: false,
-          message: 'Browser notification permission is blocked. Enable notifications for this site in Chrome/browser settings.',
-        });
-        await refreshPushDiagnostics();
-        return;
-      }
-      if (!appData.notificationsEnabled) {
-        await toggleNotifications(true);
-      }
-      const res = await syncPushSubscription(user?.email);
-      const status = await refreshPushDiagnostics();
-      if (res.subscribed && status.subscribed) {
-        setPushActionResult({
-          ok: true,
-          message: `${status.deviceLabel} registered! Notifications will arrive even when the app is closed.`,
-        });
-      } else {
-        setPushActionResult({
-          ok: false,
-          message: res.reason || status.reason || 'Could not register this device for background push.',
-        });
-      }
-    } finally {
-      setIsPushBusy(false);
-    }
-  };
-
-  const handleRunPushTest = async (delaySeconds: number, scope: 'self' | 'all') => {
-    setIsPushBusy(true);
-    setPushActionResult(null);
-    try {
-      if (!appData.notificationsEnabled) {
-        await toggleNotifications(true);
-      }
-      const res = await sendTestBackgroundNotification(delaySeconds, scope);
-      setPushActionResult(res);
-      await refreshPushDiagnostics();
-    } finally {
-      setIsPushBusy(false);
-    }
   };
 
   const generateSafeId = (): string => {
@@ -1340,13 +1236,6 @@ export default function App() {
     if (appData.notificationsEnabled) {
       sendNotification('New Transaction Added', {
         body: `${docData.name} - ₹${docData.totalAmount.toLocaleString('en-IN')}`,
-        tag: `tx-${docData.id}`,
-      });
-      void broadcastBackgroundPush({
-        title: 'New Transaction Added',
-        body: `${docData.name} - ₹${docData.totalAmount.toLocaleString('en-IN')}`,
-        tag: `tx-${docData.id}`,
-        url: '/',
       });
     }
 
@@ -1368,8 +1257,6 @@ export default function App() {
       return;
     }
 
-    const previousTx = appData.transactions.find(t => t.id === id);
-
     // 1. Instant Optimistic UI Update (0ms delay)
     let updatedTx: Transaction | null = null;
     setAppData(prev => {
@@ -1381,21 +1268,6 @@ export default function App() {
         transactions: prev.transactions.map(t => t.id === id ? updatedTx! : t)
       };
     });
-
-    if (
-      appData.notificationsEnabled &&
-      previousTx &&
-      typeof updates.paidAmount === 'number' &&
-      updates.paidAmount > (previousTx.paidAmount || 0)
-    ) {
-      const paidDelta = updates.paidAmount - (previousTx.paidAmount || 0);
-      void broadcastBackgroundPush({
-        title: 'Credit Payment Collected',
-        body: `${previousTx.name} paid ₹${paidDelta.toLocaleString('en-IN')}`,
-        tag: `credit-${id}-${Date.now()}`,
-        url: '/',
-      });
-    }
 
     // 2. Background Firestore update
     commitFirestoreWrite(
@@ -1513,13 +1385,6 @@ export default function App() {
       if (appData.notificationsEnabled) {
         sendNotification('New Sponsor Added', {
           body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
-          tag: `sp-${docData.id}`,
-        });
-        void broadcastBackgroundPush({
-          title: 'New Sponsor Added',
-          body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
-          tag: `sp-${docData.id}`,
-          url: '/',
         });
       }
     } catch (err) {
@@ -1542,13 +1407,6 @@ export default function App() {
       if (appData.notificationsEnabled && updates.status === 'COLLECTED' && oldSponsor?.status !== 'COLLECTED') {
         sendNotification('Sponsor Payment Collected', {
           body: `${oldSponsor?.name} - ₹${oldSponsor?.amount.toLocaleString('en-IN')}`,
-          tag: `sp-col-${id}`,
-        });
-        void broadcastBackgroundPush({
-          title: 'Sponsor Payment Collected',
-          body: `${oldSponsor?.name} - ₹${oldSponsor?.amount.toLocaleString('en-IN')}`,
-          tag: `sp-col-${id}`,
-          url: '/',
         });
       }
     } catch (err) {
@@ -1589,17 +1447,8 @@ export default function App() {
       );
 
       if (appData.notificationsEnabled) {
-        const typeStr = (docData.type || 'income').toLowerCase();
-        const typeProper = typeStr.charAt(0).toUpperCase() + typeStr.slice(1);
-        sendNotification(`New ${typeProper} Added`, {
+        sendNotification(`New ${docData.type.toLowerCase()} Added`, {
           body: `${docData.description} - ₹${docData.amount.toLocaleString('en-IN')}`,
-          tag: `ie-${docData.id}`,
-        });
-        void broadcastBackgroundPush({
-          title: `New ${typeProper} Added`,
-          body: `${docData.description} - ₹${docData.amount.toLocaleString('en-IN')}`,
-          tag: `ie-${docData.id}`,
-          url: '/',
         });
       }
     } catch (err) {
@@ -1659,13 +1508,6 @@ export default function App() {
       if (appData.notificationsEnabled) {
         sendNotification('Cash Handed Over', {
           body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
-          tag: `sh-${docData.id}`,
-        });
-        void broadcastBackgroundPush({
-          title: 'Cash Handed Over',
-          body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
-          tag: `sh-${docData.id}`,
-          url: '/',
         });
       }
     } catch (err) {
@@ -1773,16 +1615,10 @@ export default function App() {
 
   const toggleNotifications = async (enabled: boolean) => {
     try {
-      setAppData(prev => ({ ...prev, notificationsEnabled: enabled }));
       await commitFirestoreWrite(
         setDoc(doc(db, 'settings', 'global'), { notificationsEnabled: enabled }, { merge: true }),
         'settings/global'
       );
-      if (enabled) {
-        await syncPushSubscription(user?.email);
-      } else {
-        await unsubscribePushNotifications(true);
-      }
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/global');
     }
@@ -2173,35 +2009,6 @@ export default function App() {
           </div>
           
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => {
-                setPushActionResult(null);
-                setPushModalOpen(true);
-                void refreshPushDiagnostics();
-              }}
-              className={cn(
-                "relative p-2 rounded-lg border transition-all cursor-pointer active:scale-95",
-                appData.notificationsEnabled && pushStatus?.subscribed
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                  : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
-              )}
-              title="Background Notification Status & Test"
-              aria-label="Background Notification Status"
-            >
-              {appData.notificationsEnabled && pushStatus?.subscribed ? (
-                <BellRing size={15} />
-              ) : (
-                <Bell size={15} />
-              )}
-              <span
-                className={cn(
-                  "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white",
-                  appData.notificationsEnabled && pushStatus?.subscribed
-                    ? "bg-emerald-500"
-                    : "bg-amber-500 animate-pulse"
-                )}
-              />
-            </button>
             <button 
               onClick={handleGoogleLogout}
               className="px-2.5 py-1 text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-all flex items-center gap-1 text-[11px] font-bold border border-rose-200 cursor-pointer active:scale-95"
@@ -2262,28 +2069,6 @@ export default function App() {
                   </div>
                 )}
               </div>
-
-              <button
-                onClick={() => {
-                  setPushActionResult(null);
-                  setPushModalOpen(true);
-                  void refreshPushDiagnostics();
-                }}
-                className={cn(
-                  "relative flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-bold border transition-all shadow-sm shrink-0 cursor-pointer active:scale-95",
-                  appData.notificationsEnabled && pushStatus?.subscribed
-                    ? "bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
-                    : "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-                )}
-                title="Closed-App Push Notifications Status & Test"
-              >
-                {appData.notificationsEnabled && pushStatus?.subscribed ? (
-                  <BellRing size={14} />
-                ) : (
-                  <Bell size={14} />
-                )}
-                <span>{appData.notificationsEnabled && pushStatus?.subscribed ? 'Alerts Active' : 'Setup Alerts'}</span>
-              </button>
 
               <button
                 onClick={handleGoogleLogout}
@@ -2374,20 +2159,20 @@ export default function App() {
                           <BellRing className="text-white" size={24} />
                         </div>
                         <div>
-                          <h3 className="text-lg font-black tracking-tight">Enable Closed-App Push Notifications</h3>
-                          <p className="text-blue-100 text-sm font-medium">Get instant alerts for sales, credits, and collections even when the app is closed.</p>
+                          <h3 className="text-lg font-black tracking-tight">Enable Push Notifications</h3>
+                          <p className="text-blue-100 text-sm font-medium">Get real-time updates for sales and sponsor collections.</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 w-full md:w-auto">
                         <button 
                           onClick={() => setShowNotificationPrompt(false)}
-                          className="flex-1 md:flex-none px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm transition-all cursor-pointer"
+                          className="flex-1 md:flex-none px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm transition-all"
                         >
                           Later
                         </button>
                         <button 
                           onClick={handleRequestPermission}
-                          className="flex-1 md:flex-none px-6 py-3 bg-white text-blue-600 rounded-xl font-bold text-sm shadow-lg hover:bg-blue-50 transition-all active:scale-95 cursor-pointer"
+                          className="flex-1 md:flex-none px-6 py-3 bg-white text-blue-600 rounded-xl font-bold text-sm shadow-lg hover:bg-blue-50 transition-all active:scale-95"
                         >
                           Enable Now
                         </button>
@@ -2404,201 +2189,11 @@ export default function App() {
         </div>
       </main>
 
-      {/* Closed-App Background Notification Diagnostics & Test Modal */}
-      {pushModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-5 text-left">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div
-                  className={cn(
-                    "p-2.5 rounded-2xl border shrink-0",
-                    appData.notificationsEnabled && pushStatus?.subscribed
-                      ? "bg-emerald-50 text-emerald-600 border-emerald-200"
-                      : "bg-amber-50 text-amber-600 border-amber-200"
-                  )}
-                >
-                  {appData.notificationsEnabled && pushStatus?.subscribed ? (
-                    <BellRing size={20} />
-                  ) : (
-                    <Bell size={20} />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight">
-                    Closed-App Push Notifications
-                  </h3>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Alerts even when app or browser tab is closed
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setPushModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2.5 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-600">Team Alerts (Global)</span>
-                <span
-                  className={cn(
-                    "px-2.5 py-0.5 rounded-lg font-bold text-[11px]",
-                    appData.notificationsEnabled
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-rose-100 text-rose-800"
-                  )}
-                >
-                  {appData.notificationsEnabled ? 'Enabled' : 'Disabled'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-600">Browser Permission</span>
-                <span
-                  className={cn(
-                    "px-2.5 py-0.5 rounded-lg font-bold text-[11px] capitalize",
-                    pushStatus?.permission === 'granted'
-                      ? "bg-emerald-100 text-emerald-800"
-                      : pushStatus?.permission === 'denied'
-                        ? "bg-rose-100 text-rose-800"
-                        : "bg-amber-100 text-amber-800"
-                  )}
-                >
-                  {pushStatus?.permission || 'checking...'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-600">Service Worker</span>
-                <span
-                  className={cn(
-                    "px-2.5 py-0.5 rounded-lg font-bold text-[11px]",
-                    pushStatus?.serviceWorkerReady
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-amber-100 text-amber-800"
-                  )}
-                >
-                  {pushStatus?.serviceWorkerReady ? 'Active' : 'Not Ready'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-slate-600">This Device ({pushStatus?.deviceLabel || 'Device'})</span>
-                <span
-                  className={cn(
-                    "px-2.5 py-0.5 rounded-lg font-bold text-[11px]",
-                    pushStatus?.subscribed
-                      ? "bg-emerald-100 text-emerald-800"
-                      : "bg-rose-100 text-rose-800"
-                  )}
-                >
-                  {pushStatus?.subscribed ? 'Registered' : 'Not Registered'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between pt-1 border-t border-slate-200/70">
-                <span className="font-semibold text-slate-600">Total Registered Devices</span>
-                <span className="font-black text-slate-900">{registeredPushDevices.length}</span>
-              </div>
-            </div>
-
-            {pushStatus?.reason && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 font-medium flex items-start gap-2.5">
-                <AlertTriangle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                <span>{pushStatus.reason}</span>
-              </div>
-            )}
-
-            {registeredPushDevices.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                  Subscribed Devices
-                </p>
-                <div className="max-h-28 overflow-y-auto space-y-1 pr-1">
-                  {registeredPushDevices.map((dev, idx) => (
-                    <div
-                      key={dev.id || idx}
-                      className="flex items-center justify-between px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-xl text-[11px]"
-                    >
-                      <span className="font-bold text-slate-700 flex items-center gap-1.5 truncate">
-                        <Smartphone size={12} className="text-blue-600 shrink-0" />
-                        <span className="truncate">{dev.device || 'Browser'} — {dev.userEmail}</span>
-                      </span>
-                      {dev.endpoint === pushStatus?.endpoint && (
-                        <span className="text-[9px] font-black uppercase text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-md shrink-0">
-                          This Device
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {pushActionResult && (
-              <div
-                className={cn(
-                  "p-3 rounded-2xl text-xs font-semibold border flex items-start gap-2",
-                  pushActionResult.ok
-                    ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                    : "bg-rose-50 text-rose-800 border-rose-200"
-                )}
-              >
-                {pushActionResult.ok ? (
-                  <CheckCircle size={15} className="text-emerald-600 shrink-0 mt-0.5" />
-                ) : (
-                  <AlertCircle size={15} className="text-rose-600 shrink-0 mt-0.5" />
-                )}
-                <span>{pushActionResult.message}</span>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2 pt-1">
-              <button
-                type="button"
-                onClick={handleActivateDevicePush}
-                disabled={isPushBusy}
-                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw size={14} className={isPushBusy ? 'animate-spin' : ''} />
-                <span>
-                  {appData.notificationsEnabled && pushStatus?.subscribed
-                    ? 'Re-Sync This Device Subscription'
-                    : 'Enable & Register This Device'}
-                </span>
-              </button>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => void handleRunPushTest(5, 'self')}
-                  disabled={isPushBusy}
-                  className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                >
-                  <Send size={13} />
-                  <span>Test This Phone (5s)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleRunPushTest(0, 'all')}
-                  disabled={isPushBusy || registeredPushDevices.length === 0}
-                  className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                >
-                  <BellRing size={13} />
-                  <span>Test All Devices Now</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Real-time In-App Notification Toast */}
       {activeToast && (
         <div className="fixed bottom-4 right-4 z-50 max-w-sm w-[calc(100vw-2rem)] sm:w-80 bg-slate-900/95 backdrop-blur-md text-white p-3.5 rounded-2xl shadow-2xl border border-slate-700/80 flex items-start gap-3 animate-in slide-in-from-bottom-3 duration-300">
           <img 
-            src={activeToast.icon || publicAsset('icon-192.png')}
+            src={activeToast.icon || publicAsset('splash/mobile.jpg')}
             alt="Notification Icon" 
             className="w-10 h-10 rounded-xl object-contain bg-white/10 p-1 shrink-0 border border-white/10" 
           />

@@ -130,22 +130,6 @@
         "lastUpdated": { "type": "string", "description": "Timestamp of latest update" },
         "updatedBy": { "type": "string", "description": "User email who made the update" }
       }
-    },
-    "PushSubscriptionRecord": {
-      "title": "PushSubscriptionRecord",
-      "description": "Web Push device subscription stored for closed-app notifications",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string", "description": "Deterministic subscription ID" },
-        "endpoint": { "type": "string", "description": "Web Push service endpoint URL" },
-        "expirationTime": { "type": "number", "description": "Optional expiration timestamp" },
-        "keys": { "type": "object", "description": "VAPID encryption keys (p256dh, auth)" },
-        "userEmail": { "type": "string", "description": "Subscribed user email" },
-        "device": { "type": "string", "description": "Device platform label (Mobile or Desktop)" },
-        "updatedAt": { "type": "string", "description": "ISO timestamp of last subscription sync" },
-        "enabled": { "type": "boolean", "description": "Whether push notifications are enabled on this device" }
-      },
-      "required": ["endpoint", "keys", "userEmail", "updatedAt"]
     }
   },
   "firestore": {
@@ -180,10 +164,6 @@
     "/prizeCollection/{docId}": {
       "schema": "PrizeCollectionState",
       "description": "Real-time state for lucky draw prizes and donations"
-    },
-    "/pushSubscriptions/{subscriptionId}": {
-      "schema": "PushSubscriptionRecord",
-      "description": "Registered Web Push device subscriptions for closed-app background notifications"
     }
   }
 }

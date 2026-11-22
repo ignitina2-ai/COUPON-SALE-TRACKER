@@ -7,5 +7,3 @@ coverage/
 *.log
 .env*
 !.env.example
-.vapid-keys.json
-.push-subscriptions.json
