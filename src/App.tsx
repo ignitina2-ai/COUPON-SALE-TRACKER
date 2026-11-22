@@ -89,7 +89,7 @@ const DEFAULT_CREDIT_SETTINGS: CreditSettings = {
 
 export default function App() {
   const [activeTab, setActiveTab ] = useState('dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => (typeof window !== 'undefined' ? window.innerWidth >= 768 : false));
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
 

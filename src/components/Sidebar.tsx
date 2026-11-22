@@ -148,6 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   setActiveTab(item.id);
                   if (window.innerWidth < 768) setIsOpen(false);
                 }}
+                title={!isOpen ? item.label : undefined}
                 className={cn(
                   "w-full flex items-center p-3 rounded-xl transition-all duration-150 cursor-pointer active:scale-95 select-none",
                   activeTab === item.id 
