@@ -1,7 +1,16 @@
-const CACHE_NAME = 'coupon-sale-assets-v7';
+const CACHE_NAME = 'coupon-sale-assets-v8';
+const PRECACHE_ASSETS = [
+  '/icon-192.png',
+  '/notification-badge-72.png',
+  '/notification-badge.png',
+];
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(PRECACHE_ASSETS).catch(() => {}))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {
@@ -16,6 +25,12 @@ self.addEventListener('activate', (event) => {
       );
     }).then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {
@@ -75,10 +90,11 @@ self.addEventListener('push', (event) => {
   }
 
   const title = payload.title || 'SCC Trust Alert';
+  const body = payload.body || 'You have a new update.';
   const options = {
-    body: payload.body || 'You have a new update.',
-    icon: payload.icon || '/splash/mobile.jpg',
-    badge: payload.badge || '/notification-badge.png',
+    body,
+    icon: payload.icon || '/icon-192.png',
+    badge: payload.badge || '/notification-badge-72.png',
     vibrate: [200, 100, 200],
     tag: payload.tag || `scc-push-${Date.now()}`,
     renotify: true,
@@ -92,7 +108,15 @@ self.addEventListener('push', (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(title, options)
+    self.registration.showNotification(title, options).catch(() => {
+      // Fallback without custom icon/badge in case mobile proxy blocked asset fetch
+      return self.registration.showNotification(title, {
+        body,
+        tag: options.tag,
+        renotify: true,
+        data: options.data,
+      });
+    })
   );
 });
 

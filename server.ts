@@ -257,8 +257,8 @@ async function dispatchWebPush(
     body: String(notification.body || 'New update recorded').slice(0, 280),
     tag: notification.tag ? String(notification.tag).slice(0, 100) : `scc-${Date.now()}`,
     url: typeof notification.url === 'string' && notification.url.startsWith('/') ? notification.url : '/',
-    icon: notification.icon || '/splash/mobile.jpg',
-    badge: notification.badge || '/notification-badge.png',
+    icon: notification.icon || '/icon-192.png',
+    badge: notification.badge || '/notification-badge-72.png',
     timestamp: Date.now(),
   });
 
@@ -269,7 +269,7 @@ async function dispatchWebPush(
   await Promise.all(
     targets.map(async (sub) => {
       try {
-        await webPush.sendNotification(
+        const res = await webPush.sendNotification(
           {
             endpoint: sub.endpoint,
             expirationTime: sub.expirationTime ?? null,
@@ -285,14 +285,16 @@ async function dispatchWebPush(
           }
         );
         sent += 1;
+        console.log(`[Push] Delivered (${res?.statusCode || 201}) to ${sub.device || 'Browser'} (${sub.userEmail || 'user'})`);
       } catch (err: any) {
         const statusCode = err?.statusCode;
         if (statusCode === 404 || statusCode === 410) {
           expiredEndpoints.push(sub.endpoint);
           subscriptionStore.delete(sub.endpoint);
+          console.warn(`[Push] Removed expired endpoint (${statusCode}) for ${sub.device || 'Browser'}`);
         } else {
           failed += 1;
-          console.warn('Web Push delivery warning:', statusCode || err?.message || err);
+          console.warn('[Push] Delivery failed:', statusCode || err?.message || err, err?.body || '');
         }
       }
     })
@@ -420,7 +422,7 @@ async function startServer() {
     res.json({ ok: true, ...result });
   });
 
-  // Delayed or immediate self-test push so user can close the app and verify background delivery
+  // Delayed or immediate test push so user can close the app and verify background delivery
   app.post('/api/push/test', async (req: Request, res: Response) => {
     const authUser = await requireAuth(req);
     if (!authUser) {
@@ -428,18 +430,43 @@ async function startServer() {
       return;
     }
 
-    const { subscription, delaySeconds = 0, title, body } = req.body || {};
+    const { subscription, subscriptions, delaySeconds = 0, scope = 'self', device, title, body } = req.body || {};
     const clampedDelay = Math.max(0, Math.min(15, Number(delaySeconds) || 0));
 
-    let targets: StoredPushSubscription[] = [];
+    if (Array.isArray(subscriptions)) {
+      for (const candidate of subscriptions.slice(0, 100)) {
+        if (isValidPushSubscription(candidate)) {
+          subscriptionStore.set(candidate.endpoint, {
+            endpoint: candidate.endpoint,
+            expirationTime: candidate.expirationTime ?? null,
+            keys: candidate.keys,
+            userEmail: candidate.userEmail || authUser.email,
+            device: candidate.device,
+            updatedAt: candidate.updatedAt || new Date().toISOString(),
+          });
+        }
+      }
+    }
+
     if (isValidPushSubscription(subscription)) {
+      const existing = subscriptionStore.get(subscription.endpoint);
       subscriptionStore.set(subscription.endpoint, {
-        ...subscription,
+        endpoint: subscription.endpoint,
+        expirationTime: subscription.expirationTime ?? null,
+        keys: subscription.keys,
         userEmail: authUser.email,
+        device: typeof device === 'string' ? device.slice(0, 40) : existing?.device,
         updatedAt: new Date().toISOString(),
       });
       schedulePersistSubscriptions();
-      targets = [subscription];
+    }
+
+    let targets: StoredPushSubscription[] = [];
+    if (scope === 'all') {
+      targets = Array.from(subscriptionStore.values());
+    } else if (isValidPushSubscription(subscription)) {
+      const stored = subscriptionStore.get(subscription.endpoint);
+      targets = [stored || subscription];
     } else {
       targets = Array.from(subscriptionStore.values()).filter(
         (s) => s.userEmail === authUser.email
@@ -470,7 +497,7 @@ async function startServer() {
     }
 
     const result = await dispatchWebPush(targets, payload);
-    res.json({ ok: true, ...result });
+    res.json({ ok: true, targetCount: targets.length, ...result });
   });
 
   const isProd = process.env.NODE_ENV === 'production' && fs.existsSync(path.join(ROOT_DIR, 'dist', 'index.html'));

@@ -29,15 +29,24 @@ export interface BackgroundPushStatus {
   subscribed: boolean;
   endpoint: string | null;
   vapidAvailable: boolean;
+  isMobile: boolean;
+  isStandalone: boolean;
+  isNativeCapacitor: boolean;
+  iosNeedsHomeScreen: boolean;
+  deviceLabel: string;
+  reason?: string;
 }
 
 let currentPushEndpoint: string | null = null;
 let cachedSubscriptions: StoredPushSubscription[] = [];
 let swListenerAttached = false;
+let syncInFlightPromise: Promise<{ subscribed: boolean; endpoint?: string | null; reason?: string }> | null = null;
 
 export const setKnownPushSubscriptions = (subs: StoredPushSubscription[]) => {
   cachedSubscriptions = Array.isArray(subs) ? subs : [];
 };
+
+export const getKnownPushSubscriptions = () => cachedSubscriptions;
 
 export const getCurrentPushEndpoint = () => currentPushEndpoint;
 
@@ -81,9 +90,60 @@ async function hashEndpointId(endpoint: string): Promise<string> {
   return `sub_${(hash >>> 0).toString(36)}_${endpoint.length}`;
 }
 
-function getDeviceLabel(): string {
+export function getDeviceLabel(): string {
   if (typeof navigator === 'undefined') return 'Browser';
-  return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop';
+  const ua = navigator.userAgent || '';
+  if (/Android/i.test(ua)) return 'Mobile (Android)';
+  if (/iPhone|iPad|iPod/i.test(ua)) return 'Mobile (iOS)';
+  if (/Mobi/i.test(ua)) return 'Mobile';
+  return 'Desktop';
+}
+
+function getRuntimeFlags() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return {
+      isMobile: false,
+      isStandalone: false,
+      isNativeCapacitor: false,
+      iosNeedsHomeScreen: false,
+    };
+  }
+  const ua = navigator.userAgent || '';
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(ua);
+  const isStandalone =
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as any).standalone === true;
+  const isIOS = /iPhone|iPad|iPod/i.test(ua);
+  const isNativeCapacitor = Boolean((window as any).Capacitor?.isNativePlatform?.());
+  return {
+    isMobile,
+    isStandalone,
+    isNativeCapacitor,
+    iosNeedsHomeScreen: isIOS && !isStandalone,
+  };
+}
+
+async function getReadyServiceWorkerRegistration(): Promise<ServiceWorkerRegistration | null> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+    return null;
+  }
+  try {
+    let reg = await navigator.serviceWorker.getRegistration('/');
+    if (!reg) {
+      reg = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' });
+    }
+    if (reg.waiting) {
+      reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+    const readyReg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+    ]);
+    return readyReg || reg;
+  } catch (err) {
+    console.warn('Service Worker readiness check error:', err);
+    return null;
+  }
 }
 
 async function fetchVapidPublicKey(): Promise<string | null> {
@@ -91,7 +151,7 @@ async function fetchVapidPublicKey(): Promise<string | null> {
     return null;
   }
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 3500);
+  const timer = setTimeout(() => controller.abort(), 5000);
   try {
     const res = await fetch('/api/push/vapid-public-key', {
       cache: 'no-store',
@@ -139,14 +199,12 @@ async function persistSubscriptionToCloudAndServer(
     enabled: true,
   };
 
-  // Persist to Firestore so all server restarts retain this device
   try {
     await setDoc(doc(db, 'pushSubscriptions', subId), record, { merge: true });
   } catch (err) {
     console.warn('Firestore push subscription save notice:', err);
   }
 
-  // Register on Express server
   try {
     const idToken = await currentUser.getIdToken();
     await fetch('/api/push/subscribe', {
@@ -184,13 +242,23 @@ function attachServiceWorkerPushMessageListener() {
 }
 
 export const getBackgroundPushStatus = async (): Promise<BackgroundPushStatus> => {
+  const flags = getRuntimeFlags();
+  const deviceLabel = getDeviceLabel();
+
   if (
     typeof window === 'undefined' ||
     !('Notification' in window) ||
     !('serviceWorker' in navigator) ||
     !('PushManager' in window) ||
-    window.location.protocol === 'file:'
+    window.location.protocol === 'file:' ||
+    flags.isNativeCapacitor
   ) {
+    let reason = 'Web Push is not supported in this browser.';
+    if (flags.isNativeCapacitor) {
+      reason = 'Android APK WebView cannot receive background Web Push; open the app in Chrome (Install App) for closed-app alerts.';
+    } else if (flags.iosNeedsHomeScreen) {
+      reason = 'On iPhone/iPad, tap Share -> Add to Home Screen first to enable closed-app alerts.';
+    }
     return {
       supported: false,
       permission: typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported',
@@ -198,30 +266,43 @@ export const getBackgroundPushStatus = async (): Promise<BackgroundPushStatus> =
       subscribed: false,
       endpoint: null,
       vapidAvailable: false,
+      deviceLabel,
+      reason,
+      ...flags,
     };
   }
 
   const publicKey = await fetchVapidPublicKey();
+  const registration = await getReadyServiceWorkerRegistration();
   let serviceWorkerReady = false;
   let subscribed = false;
   let endpoint: string | null = null;
 
-  try {
-    const registration = await Promise.race([
-      navigator.serviceWorker.ready,
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-    ]);
-    if (registration) {
-      serviceWorkerReady = true;
+  if (registration) {
+    serviceWorkerReady = true;
+    try {
       const existing = await registration.pushManager.getSubscription();
       if (existing) {
         subscribed = true;
         endpoint = existing.endpoint;
         currentPushEndpoint = existing.endpoint;
       }
+    } catch {
+      // ignore
     }
-  } catch {
-    // ignore
+  }
+
+  let reason: string | undefined;
+  if (!publicKey) {
+    reason = 'Push server API unavailable on this URL (requires Node server hosting).';
+  } else if (!serviceWorkerReady) {
+    reason = 'Service Worker is still activating — tap Register This Device.';
+  } else if (Notification.permission === 'denied') {
+    reason = 'Notifications are blocked in your browser site settings.';
+  } else if (Notification.permission !== 'granted') {
+    reason = 'Notification permission not allowed yet.';
+  } else if (!subscribed) {
+    reason = 'Permission allowed, but this device is not subscribed yet.';
   }
 
   return {
@@ -231,71 +312,90 @@ export const getBackgroundPushStatus = async (): Promise<BackgroundPushStatus> =
     subscribed,
     endpoint,
     vapidAvailable: Boolean(publicKey),
+    deviceLabel,
+    reason,
+    ...flags,
   };
 };
 
 export const syncPushSubscription = async (
   userEmail?: string | null
 ): Promise<{ subscribed: boolean; endpoint?: string | null; reason?: string }> => {
-  if (
-    typeof window === 'undefined' ||
-    !('Notification' in window) ||
-    !('serviceWorker' in navigator) ||
-    !('PushManager' in window) ||
-    window.location.protocol === 'file:'
-  ) {
-    return { subscribed: false, reason: 'Web Push not supported in this runtime.' };
+  if (syncInFlightPromise) {
+    return syncInFlightPromise;
   }
 
-  attachServiceWorkerPushMessageListener();
+  syncInFlightPromise = (async () => {
+    const flags = getRuntimeFlags();
 
-  if (Notification.permission !== 'granted') {
-    return { subscribed: false, reason: 'Notification permission not granted.' };
-  }
-
-  try {
-    const publicKey = await fetchVapidPublicKey();
-    if (!publicKey) {
-      return { subscribed: false, reason: 'Push server VAPID key unavailable.' };
+    if (
+      typeof window === 'undefined' ||
+      !('Notification' in window) ||
+      !('serviceWorker' in navigator) ||
+      !('PushManager' in window) ||
+      window.location.protocol === 'file:' ||
+      flags.isNativeCapacitor
+    ) {
+      return {
+        subscribed: false,
+        reason: flags.iosNeedsHomeScreen
+          ? 'On iPhone/iPad, use Share -> Add to Home Screen first.'
+          : flags.isNativeCapacitor
+            ? 'Open the web app in Chrome (Install App) for closed-app Web Push.'
+            : 'Web Push is not supported in this runtime.',
+      };
     }
 
-    const registration = await Promise.race([
-      navigator.serviceWorker.ready,
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
-    ]);
-    if (!registration) {
-      return { subscribed: false, reason: 'Service Worker not ready.' };
+    attachServiceWorkerPushMessageListener();
+
+    if (Notification.permission !== 'granted') {
+      return { subscribed: false, reason: 'Notification permission not granted.' };
     }
 
-    const appServerKey = urlBase64ToUint8Array(publicKey);
-    let subscription = await registration.pushManager.getSubscription();
-
-    // If browser has an old subscription with a different VAPID key, refresh it cleanly
-    if (subscription?.options?.applicationServerKey) {
-      const existingKey = new Uint8Array(subscription.options.applicationServerKey);
-      if (!uint8ArraysEqual(existingKey, appServerKey)) {
-        await subscription.unsubscribe().catch(() => {});
-        subscription = null;
+    try {
+      const publicKey = await fetchVapidPublicKey();
+      if (!publicKey) {
+        return { subscribed: false, reason: 'Push server VAPID key unavailable on this host.' };
       }
-    }
 
-    if (!subscription) {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: appServerKey,
-      });
-    }
+      const registration = await getReadyServiceWorkerRegistration();
+      if (!registration) {
+        return { subscribed: false, reason: 'Service Worker could not activate. Reload the page and try again.' };
+      }
 
-    const subJson = subscription.toJSON();
-    await persistSubscriptionToCloudAndServer(subJson, userEmail);
-    return { subscribed: true, endpoint: subJson.endpoint || null };
-  } catch (err: any) {
-    console.warn('Push subscription setup notice:', err);
-    return {
-      subscribed: false,
-      reason: err?.message || 'Could not register background push subscription.',
-    };
-  }
+      const appServerKey = urlBase64ToUint8Array(publicKey);
+      let subscription = await registration.pushManager.getSubscription();
+
+      if (subscription?.options?.applicationServerKey) {
+        const existingKey = new Uint8Array(subscription.options.applicationServerKey);
+        if (!uint8ArraysEqual(existingKey, appServerKey)) {
+          await subscription.unsubscribe().catch(() => {});
+          subscription = null;
+        }
+      }
+
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: appServerKey,
+        });
+      }
+
+      const subJson = subscription.toJSON();
+      await persistSubscriptionToCloudAndServer(subJson, userEmail);
+      return { subscribed: true, endpoint: subJson.endpoint || null };
+    } catch (err: any) {
+      console.warn('Push subscription setup notice:', err);
+      return {
+        subscribed: false,
+        reason: err?.message || 'Could not register background push subscription.',
+      };
+    } finally {
+      syncInFlightPromise = null;
+    }
+  })();
+
+  return syncInFlightPromise;
 };
 
 export const unsubscribePushNotifications = async (removeFromFirestore = true): Promise<void> => {
@@ -363,7 +463,7 @@ export const requestNotificationPermission = async () => {
   }
 
   if (granted) {
-    void syncPushSubscription(auth.currentUser?.email);
+    await syncPushSubscription(auth.currentUser?.email);
   }
 
   return granted;
@@ -425,30 +525,35 @@ export const broadcastBackgroundPush = async (payload: {
 };
 
 export const sendTestBackgroundNotification = async (
-  delaySeconds = 5
+  delaySeconds = 5,
+  scope: 'self' | 'all' = 'self'
 ): Promise<{ ok: boolean; message: string }> => {
   const currentUser = auth.currentUser;
   if (!currentUser) {
     return { ok: false, message: 'Please sign in first to test background notifications.' };
   }
 
-  const granted = await requestNotificationPermission();
-  if (!granted) {
-    return { ok: false, message: 'Notification permission is blocked. Allow notifications in browser settings.' };
-  }
+  let subJson: PushSubscriptionJSON | undefined;
+  if (scope === 'self') {
+    const granted = await requestNotificationPermission();
+    if (!granted) {
+      return { ok: false, message: 'Notification permission is blocked. Allow notifications in browser settings.' };
+    }
 
-  const syncResult = await syncPushSubscription(currentUser.email);
-  if (!syncResult.subscribed) {
-    return { ok: false, message: syncResult.reason || 'Device push subscription is not ready.' };
-  }
+    const syncResult = await syncPushSubscription(currentUser.email);
+    if (!syncResult.subscribed) {
+      return { ok: false, message: syncResult.reason || 'Device push subscription is not ready.' };
+    }
 
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    const subscription = await registration.pushManager.getSubscription();
+    const registration = await getReadyServiceWorkerRegistration();
+    const subscription = registration ? await registration.pushManager.getSubscription() : null;
     if (!subscription) {
       return { ok: false, message: 'No active push subscription found on this device.' };
     }
+    subJson = subscription.toJSON();
+  }
 
+  try {
     const idToken = await currentUser.getIdToken();
     const res = await fetch('/api/push/test', {
       method: 'POST',
@@ -457,7 +562,10 @@ export const sendTestBackgroundNotification = async (
         Authorization: `Bearer ${idToken}`,
       },
       body: JSON.stringify({
-        subscription: subscription.toJSON(),
+        subscription: subJson,
+        subscriptions: cachedSubscriptions.filter((s) => s.enabled !== false),
+        scope,
+        device: getDeviceLabel(),
         delaySeconds,
         title: 'SCC Trust Closed-App Test',
         body: 'Success! Notifications are arriving even while the app is closed.',
@@ -469,12 +577,23 @@ export const sendTestBackgroundNotification = async (
       return { ok: false, message: data?.error || 'Could not schedule test notification.' };
     }
 
+    if (delaySeconds > 0) {
+      return {
+        ok: true,
+        message: `Scheduled for ${data?.targetCount || 1} device(s) in ${delaySeconds}s — close/minimize the app now!`,
+      };
+    }
+
+    if (data?.sent === 0 && data?.failed > 0) {
+      return {
+        ok: false,
+        message: 'Push server failed to deliver to FCM. Re-register this device and verify VAPID keys.',
+      };
+    }
+
     return {
       ok: true,
-      message:
-        delaySeconds > 0
-          ? `Test notification scheduled in ${delaySeconds}s — close or minimize the app now to verify!`
-          : 'Test background notification sent!',
+      message: `Delivered to ${data?.sent ?? 1} device(s)!`,
     };
   } catch (err: any) {
     return { ok: false, message: err?.message || 'Failed to send test push notification.' };
@@ -483,8 +602,8 @@ export const sendTestBackgroundNotification = async (
 
 export const sendNotification = (title: string, options?: NotificationOptions) => {
   const notificationOptions = {
-    icon: publicAsset('splash/mobile.jpg'),
-    badge: publicAsset('notification-badge.png'),
+    icon: publicAsset('icon-192.png'),
+    badge: publicAsset('notification-badge-72.png'),
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),
@@ -521,7 +640,7 @@ export const sendNotification = (title: string, options?: NotificationOptions) =
       detail: {
         title,
         body: options?.body || '',
-        icon: publicAsset('splash/mobile.jpg'),
+        icon: publicAsset('icon-192.png'),
       },
     });
     window.dispatchEvent(event);
