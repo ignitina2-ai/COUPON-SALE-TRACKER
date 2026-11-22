@@ -131,11 +131,18 @@ const Sidebar: React.FC<SidebarProps> = ({
             )}
             <button 
               onClick={() => setIsOpen(!isOpen)}
-              className="p-1.5 hover:bg-slate-800 rounded-lg transition-all active:scale-90 cursor-pointer text-slate-300 hover:text-white"
-              title={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+              className="group relative p-1.5 hover:bg-slate-800 rounded-lg transition-all active:scale-90 cursor-pointer text-slate-300 hover:text-white"
               aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
             >
               {isOpen ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
+              {!isOpen && (
+                <span
+                  role="tooltip"
+                  className="pointer-events-none hidden md:inline-flex items-center absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold whitespace-nowrap shadow-xl border border-slate-700/80 opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0 transition-all duration-150 z-50 before:content-[''] before:absolute before:-left-1.5 before:top-1/2 before:-translate-y-1/2 before:border-y-[5px] before:border-y-transparent before:border-r-[6px] before:border-r-slate-900"
+                >
+                  Expand Sidebar
+                </span>
+              )}
             </button>
           </div>
 
@@ -148,16 +155,30 @@ const Sidebar: React.FC<SidebarProps> = ({
                   setActiveTab(item.id);
                   if (window.innerWidth < 768) setIsOpen(false);
                 }}
-                title={!isOpen ? item.label : undefined}
+                aria-label={item.label}
                 className={cn(
-                  "w-full flex items-center p-3 rounded-xl transition-all duration-150 cursor-pointer active:scale-95 select-none",
+                  "group relative w-full flex items-center p-3 rounded-xl transition-all duration-150 cursor-pointer active:scale-95 select-none",
                   activeTab === item.id 
                     ? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 font-bold scale-[1.01]" 
                     : "text-slate-400 hover:bg-slate-800/80 hover:text-white"
                 )}
               >
-                <item.icon size={22} className={cn(isOpen ? "mr-3" : "mx-auto", "shrink-0 transition-transform duration-150")} />
-                {isOpen && <span className="font-medium text-sm">{item.label}</span>}
+                <item.icon size={22} className={cn(isOpen ? "mr-3" : "mx-auto", "shrink-0 transition-transform duration-150 group-hover:scale-110")} />
+                {isOpen ? (
+                  <span className="font-medium text-sm">{item.label}</span>
+                ) : (
+                  <span
+                    role="tooltip"
+                    className={cn(
+                      "pointer-events-none hidden md:inline-flex items-center absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap shadow-xl border opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0 transition-all duration-150 z-50 before:content-[''] before:absolute before:-left-1.5 before:top-1/2 before:-translate-y-1/2 before:border-y-[5px] before:border-y-transparent before:border-r-[6px]",
+                      activeTab === item.id
+                        ? "bg-blue-600 text-white border-blue-500 before:border-r-blue-600"
+                        : "bg-slate-900 text-white border-slate-700/80 before:border-r-slate-900"
+                    )}
+                  >
+                    {item.label}
+                  </span>
+                )}
               </button>
             ))}
 
@@ -166,20 +187,20 @@ const Sidebar: React.FC<SidebarProps> = ({
               <button
                 type="button"
                 onClick={handleInstallClick}
+                aria-label={isInstalled ? "APK Installed" : "Install as APK"}
                 className={cn(
-                  "w-full flex items-center p-3 rounded-lg transition-all duration-200 cursor-pointer active:scale-95 text-left",
+                  "group relative w-full flex items-center p-3 rounded-lg transition-all duration-200 cursor-pointer active:scale-95 text-left",
                   isInstalled 
                     ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
                     : "bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-600/30"
                 )}
-                title={isInstalled ? "App Installed on Device (APK Active)" : "Install App as APK"}
               >
                 {isInstalled ? (
                   <CheckCircle2 size={24} className={cn(isOpen ? "mr-3 shrink-0 text-emerald-400" : "mx-auto shrink-0 text-emerald-400")} />
                 ) : (
                   <Download size={24} className={cn(isOpen ? "mr-3 shrink-0 text-white" : "mx-auto shrink-0 text-white")} />
                 )}
-                {isOpen && (
+                {isOpen ? (
                   <div className="flex flex-col min-w-0">
                     <span className="font-bold text-sm leading-tight">
                       {isInstalled ? "APK Installed" : "Install as APK"}
@@ -188,6 +209,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                       {isInstalled ? "Active on Device" : "1-Tap Install"}
                     </span>
                   </div>
+                ) : (
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none hidden md:inline-flex items-center absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold whitespace-nowrap shadow-xl border border-slate-700/80 opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0 transition-all duration-150 z-50 before:content-[''] before:absolute before:-left-1.5 before:top-1/2 before:-translate-y-1/2 before:border-y-[5px] before:border-y-transparent before:border-r-[6px] before:border-r-slate-900"
+                  >
+                    {isInstalled ? "APK Installed" : "Install as APK"}
+                  </span>
                 )}
               </button>
             </div>
@@ -201,13 +229,22 @@ const Sidebar: React.FC<SidebarProps> = ({
                   setIsOpen(false);
                   onLogout();
                 }}
+                aria-label="Sign Out"
                 className={cn(
-                  "w-full flex items-center p-2.5 rounded-lg text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-all duration-200 border border-transparent hover:border-rose-500/20 cursor-pointer active:scale-95"
+                  "group relative w-full flex items-center p-2.5 rounded-lg text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-all duration-200 border border-transparent hover:border-rose-500/20 cursor-pointer active:scale-95"
                 )}
-                title="Sign out of application"
               >
                 <LogOut size={20} className={isOpen ? "mr-3 shrink-0" : "mx-auto shrink-0"} />
-                {isOpen && <span className="font-semibold text-sm">Sign Out</span>}
+                {isOpen ? (
+                  <span className="font-semibold text-sm">Sign Out</span>
+                ) : (
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none hidden md:inline-flex items-center absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-bold whitespace-nowrap shadow-xl border border-rose-500 opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0 transition-all duration-150 z-50 before:content-[''] before:absolute before:-left-1.5 before:top-1/2 before:-translate-y-1/2 before:border-y-[5px] before:border-y-transparent before:border-r-[6px] before:border-r-rose-600"
+                  >
+                    Sign Out
+                  </span>
+                )}
               </button>
             )}
             <div className="text-center text-[10px] text-slate-500">
