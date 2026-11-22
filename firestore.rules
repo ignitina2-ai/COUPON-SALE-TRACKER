@@ -77,6 +77,38 @@ service cloud.firestore {
       allow read, write: if canUseApp();
     }
 
+    // Push Subscriptions (Registered Web Push devices for closed-app notifications)
+    match /pushSubscriptions/{subscriptionId} {
+      allow read: if canUseApp();
+      allow create, update: if canUseApp()
+        && request.auth.token.email_verified == true
+        && subscriptionId is string
+        && subscriptionId.size() >= 4
+        && subscriptionId.size() <= 128
+        && subscriptionId.matches('^[a-zA-Z0-9_\\-]+$')
+        && request.resource.data.keys().hasAll(['endpoint', 'keys', 'userEmail', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['id', 'endpoint', 'expirationTime', 'keys', 'userEmail', 'device', 'updatedAt', 'enabled'])
+        && request.resource.data.endpoint is string
+        && request.resource.data.endpoint.size() >= 10
+        && request.resource.data.endpoint.size() <= 2048
+        && request.resource.data.keys is map
+        && request.resource.data.keys.keys().hasAll(['p256dh', 'auth'])
+        && request.resource.data.keys.keys().hasOnly(['p256dh', 'auth'])
+        && request.resource.data.keys.p256dh is string
+        && request.resource.data.keys.p256dh.size() <= 256
+        && request.resource.data.keys.auth is string
+        && request.resource.data.keys.auth.size() <= 128
+        && request.resource.data.userEmail is string
+        && request.resource.data.userEmail.size() <= 254
+        && request.resource.data.userEmail.lower() == request.auth.token.email.lower()
+        && request.resource.data.updatedAt is string
+        && request.resource.data.updatedAt.size() <= 64
+        && (!('device' in request.resource.data) || (request.resource.data.device is string && request.resource.data.device.size() <= 64))
+        && (!('enabled' in request.resource.data) || request.resource.data.enabled is bool)
+        && (!('id' in request.resource.data) || (request.resource.data.id is string && request.resource.data.id == subscriptionId));
+      allow delete: if canUseApp();
+    }
+
     // Test connection
     match /test/{testId} {
       allow read: if request.auth != null;

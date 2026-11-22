@@ -25,6 +25,7 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  onGoHome?: () => void;
   user?: any;
   onLogout?: () => void;
   isPrimaryAdmin?: boolean;
@@ -42,6 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   setActiveTab, 
   isOpen, 
   setIsOpen, 
+  onGoHome,
   user, 
   onLogout, 
   isPrimaryAdmin = false,
@@ -123,12 +125,37 @@ const Sidebar: React.FC<SidebarProps> = ({
       )}>
         <div className="flex flex-col h-full">
           {/* Header */}
-          <div className="p-4 flex items-center justify-between border-b border-slate-800">
-            {isOpen ? (
-              <span className="font-bold text-xl tracking-tight">COUPON SALE</span>
-            ) : (
-              <span className="font-bold text-xl mx-auto">C</span>
-            )}
+          <div className="p-4 flex items-center justify-between border-b border-slate-800 gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                if (onGoHome) {
+                  onGoHome();
+                } else {
+                  setActiveTab('dashboard');
+                  if (window.innerWidth < 768) setIsOpen(false);
+                }
+              }}
+              aria-label="Go to Home Overview"
+              className={cn(
+                "group relative flex items-center justify-center rounded-lg transition-all cursor-pointer active:scale-95 hover:bg-slate-800/80 px-1.5 py-1",
+                isOpen ? "flex-1 justify-start text-left" : "mx-auto"
+              )}
+            >
+              {isOpen ? (
+                <span className="font-bold text-xl tracking-tight text-white">COUPON SALE</span>
+              ) : (
+                <>
+                  <span className="font-bold text-xl text-white">C</span>
+                  <span
+                    role="tooltip"
+                    className="pointer-events-none hidden md:inline-flex items-center absolute left-full top-1/2 -translate-y-1/2 ml-3 px-3 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold whitespace-nowrap shadow-xl border border-slate-700/80 opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-focus-visible:opacity-100 group-focus-visible:translate-x-0 transition-all duration-150 z-50 before:content-[''] before:absolute before:-left-1.5 before:top-1/2 before:-translate-y-1/2 before:border-y-[5px] before:border-y-transparent before:border-r-[6px] before:border-r-slate-900"
+                  >
+                    Home Overview
+                  </span>
+                </>
+              )}
+            </button>
             <button 
               onClick={() => setIsOpen(!isOpen)}
               className="group relative p-1.5 hover:bg-slate-800 rounded-lg transition-all active:scale-90 cursor-pointer text-slate-300 hover:text-white"

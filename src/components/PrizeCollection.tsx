@@ -45,7 +45,7 @@ import { getCachedAccessToken, setCachedAccessToken, auth, db, driveGoogleProvid
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { DEFAULT_WEBHOOK_URL, DriveSyncConfig } from '@/lib/googleDriveSheets';
-import { sendNotification } from '@/lib/notifications';
+import { sendNotification, broadcastBackgroundPush } from '@/lib/notifications';
 
 const STORAGE_KEY_TRACKING = 'stCasimirLuckyDraw2026_tracking';
 const STORAGE_KEY_COLLECTED = 'stCasimirLuckyDraw2026_collected';
@@ -455,7 +455,14 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
     }
 
     sendNotification('Prize Collection Updated', {
-      body: `${prizeItemName}: ${statusDesc}`
+      body: `${prizeItemName}: ${statusDesc}`,
+      tag: `prize-status-${prizeNo}`,
+    });
+    void broadcastBackgroundPush({
+      title: 'Prize Collection Updated',
+      body: `${prizeItemName}: ${statusDesc}`,
+      tag: `prize-status-${prizeNo}`,
+      url: '/',
     });
   };
 
@@ -478,7 +485,14 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
     const prize = prizes.find(p => p.prize_no === prizeNo);
     const prizeItemName = prize ? `${prize.prize_no}. ${prize.prize_item}` : `Prize #${prizeNo}`;
     sendNotification('Prize Cost Updated', {
-      body: `${prizeItemName} Trust Cost set to ₹${validAmount.toLocaleString('en-IN')}`
+      body: `${prizeItemName} Trust Cost set to ₹${validAmount.toLocaleString('en-IN')}`,
+      tag: `prize-cost-${prizeNo}`,
+    });
+    void broadcastBackgroundPush({
+      title: 'Prize Cost Updated',
+      body: `${prizeItemName} Trust Cost set to ₹${validAmount.toLocaleString('en-IN')}`,
+      tag: `prize-cost-${prizeNo}`,
+      url: '/',
     });
   };
 
@@ -502,7 +516,14 @@ export default function PrizeCollection({ setActiveTab }: { setActiveTab?: (tab:
     setNewReceivedAmount('');
 
     sendNotification('Prize Donation Received', {
-      body: `₹${amount.toLocaleString('en-IN')} received from ${name}`
+      body: `₹${amount.toLocaleString('en-IN')} received from ${name}`,
+      tag: `prize-donation-${newEntry.id}`,
+    });
+    void broadcastBackgroundPush({
+      title: 'Prize Donation Received',
+      body: `₹${amount.toLocaleString('en-IN')} received from ${name}`,
+      tag: `prize-donation-${newEntry.id}`,
+      url: '/',
     });
   };
 

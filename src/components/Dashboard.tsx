@@ -46,6 +46,7 @@ interface DashboardProps {
   editingTransaction?: Transaction | null;
   onUpdateTransaction?: (id: string, updates: Partial<Transaction>) => void;
   onCancelEdit?: () => void;
+  resetTrigger?: number;
   permissions?: {
     canAdd: boolean;
     canEdit: boolean;
@@ -67,11 +68,19 @@ const Dashboard: React.FC<DashboardProps> = ({
   editingTransaction,
   onUpdateTransaction,
   onCancelEdit,
+  resetTrigger,
   permissions
 }) => {
   const [timeframe, setTimeframe] = useState<'overall' | 'today'>('overall');
   const [currentTimeStr, setCurrentTimeStr] = useState<string>('');
   const [isShareModalOpen, setIsShareModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (resetTrigger && resetTrigger > 0) {
+      setTimeframe('overall');
+      setIsShareModalOpen(false);
+    }
+  }, [resetTrigger]);
 
   useEffect(() => {
     if (isShareModalOpen) {
@@ -379,7 +388,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div id="dashboard-overview-top" className="space-y-6 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
         <div className="hidden md:block">
           <h2 className="text-xl font-black text-slate-800 tracking-tight uppercase">Overview</h2>

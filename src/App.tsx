@@ -92,6 +92,23 @@ export default function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+  const [dashboardResetKey, setDashboardResetKey] = useState(0);
+
+  const handleGoHomeOverview = () => {
+    setActiveTab('dashboard');
+    setEditingTransaction(null);
+    setDashboardResetKey(prev => prev + 1);
+    if (typeof window !== 'undefined') {
+      if (window.innerWidth < 768) {
+        setIsSidebarOpen(false);
+      }
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 40);
+      });
+    }
+  };
 
   // Auth and sync statuses
   const [user, setUser] = useState<any>(null);
@@ -1729,6 +1746,7 @@ export default function App() {
                  onCancelEdit={() => {
                    setEditingTransaction(null);
                  }}
+                 resetTrigger={dashboardResetKey}
                  permissions={userPermissions}
                />;
       case 'transactions':
@@ -1920,6 +1938,7 @@ export default function App() {
                  onCancelEdit={() => {
                    setEditingTransaction(null);
                  }}
+                 resetTrigger={dashboardResetKey}
                  permissions={userPermissions}
                />;
     }
@@ -1969,6 +1988,7 @@ export default function App() {
         setActiveTab={setActiveTab} 
         isOpen={isSidebarOpen} 
         setIsOpen={setIsSidebarOpen} 
+        onGoHome={handleGoHomeOverview}
         user={user}
         isPrimaryAdmin={isPrimaryAdmin}
         permissions={userPermissions}
@@ -1992,9 +2012,9 @@ export default function App() {
               <Menu size={22} />
             </button>
             <button 
-              onClick={() => setActiveTab('dashboard')}
+              onClick={handleGoHomeOverview}
               className="flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all duration-150 text-left text-slate-950 bg-transparent border-0 min-w-0 cursor-pointer p-1 -m-1 rounded-xl hover:bg-slate-50/80 active:bg-slate-100 select-none"
-              title="Go to Dashboard"
+              title="Go to Home Overview"
             >
               {resolvedLogo ? (
                 <img src={resolvedLogo} alt="Logo" className="w-6 h-6 object-contain shrink-0" referrerPolicy="no-referrer" />
@@ -2023,9 +2043,9 @@ export default function App() {
         {/* Desktop Header (Logo/Title) */}
         <div className="hidden md:flex items-center justify-between px-8 py-6 bg-white/50 backdrop-blur-sm border-b border-slate-100 sticky top-0 z-30 font-sans">
           <button 
-            onClick={() => setActiveTab('dashboard')}
+            onClick={handleGoHomeOverview}
             className="flex items-center gap-4 hover:opacity-90 active:scale-95 transition-all duration-150 text-left bg-transparent border-0 cursor-pointer p-2 -m-2 rounded-2xl hover:bg-slate-50/80 active:bg-slate-100 select-none"
-            title="Go to Dashboard"
+            title="Go to Home Overview"
           >
             {resolvedLogo ? (
               <img src={resolvedLogo} alt="Logo" className="w-10 h-10 object-contain rounded-lg shadow-sm" referrerPolicy="no-referrer" />

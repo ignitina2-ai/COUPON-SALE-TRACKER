@@ -235,8 +235,11 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
     date: getTodayISTStr(),
   });
 
+  const wasEditingRef = React.useRef(false);
+
   useEffect(() => {
     if (editingTransaction) {
+      wasEditingRef.current = true;
       setFormData({
         name: editingTransaction.name,
         phone: editingTransaction.phone || '',
@@ -248,6 +251,20 @@ const TransactionForm: React.FC<TransactionFormProps> = ({
         paymentMethod: editingTransaction.paymentMethod,
         paidAmount: editingTransaction.paidAmount,
         date: editingTransaction.date ? editingTransaction.date.split('T')[0] : getTodayISTStr(),
+      });
+    } else if (wasEditingRef.current) {
+      wasEditingRef.current = false;
+      setFormData({
+        name: '',
+        phone: '',
+        area: '',
+        books: 0,
+        coupons: 0,
+        bookNumber: '',
+        couponNumber: '',
+        paymentMethod: 'CASH' as PaymentMethod,
+        paidAmount: 0,
+        date: getTodayISTStr(),
       });
     }
   }, [editingTransaction]);
