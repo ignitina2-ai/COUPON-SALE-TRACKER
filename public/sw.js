@@ -1,61 +1,4 @@
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js');
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBaKmEYUtyRk7bgz03Df1Gfy55p6hlkByc",
-  authDomain: "coupon-sale-tracker.firebaseapp.com",
-  projectId: "coupon-sale-tracker",
-  storageBucket: "coupon-sale-tracker.firebasestorage.app",
-  messagingSenderId: "755043690981",
-  appId: "1:755043690981:web:8c5ae52f6befe77702e70c",
-  measurementId: "G-DJH27GY09Q"
-};
-const DB_ID = "(default)";
-
-firebase.initializeApp(firebaseConfig);
-const db = DB_ID && DB_ID !== '(default)' ? firebase.app().firestore(DB_ID) : firebase.app().firestore();
-
-let notificationsEnabledGlobal = true;
-
-// Listen to global notification settings doc
-db.doc('settings/global').onSnapshot((doc) => {
-  if (doc && doc.exists) {
-    const data = doc.data();
-    notificationsEnabledGlobal = data.notificationsEnabled !== false;
-  }
-}, (err) => {
-  console.warn("Global settings listener error in sw:", err);
-});
-
-// Helper to check if the app is currently open and visible to the user
-function getIsAppOpen() {
-  return self.clients.matchAll({ type: 'window', includeUncontrolled: true })
-    .then((clientList) => {
-      return clientList.some(client => client.visibilityState === 'visible');
-    });
-}
-
-// Handler to safely display background notifications with mobile splash branding
-function sendBackgroundNotification(title, body) {
-  if (!notificationsEnabledGlobal) return;
-
-  getIsAppOpen().then((isOpen) => {
-    if (!isOpen) {
-      self.registration.showNotification(title, {
-        body: body,
-        icon: '/splash/mobile.jpg',
-        badge: '/notification-badge.png',
-        vibrate: [100, 50, 100],
-        data: {
-          dateOfArrival: Date.now(),
-          primaryKey: 1
-        }
-      });
-    }
-  });
-}
-
-const CACHE_NAME = 'coupon-sale-assets-v6';
+const CACHE_NAME = 'coupon-sale-assets-v7';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -71,7 +14,7 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    }).then(() => clients.claim())
+    }).then(() => self.clients.claim())
   );
 });
 
@@ -80,17 +23,18 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(event.request.url);
 
-  // Skip caching our internal APIs, firebase libraries, and Google API websocket pathways
+  // Skip caching internal APIs, Firebase endpoints, and external requests
   if (
     requestUrl.origin !== self.location.origin ||
     requestUrl.pathname.startsWith('/api/') ||
+    requestUrl.pathname === '/sw.js' ||
     event.request.url.includes('firestore.googleapis.com') ||
     event.request.url.includes('googleapis.com')
   ) {
     return;
   }
 
-  // Dynamic Network-First fallback to Cache to secure full offline browser refreshes
+  // Network-First with cache fallback for offline resilience
   event.respondWith(
     fetch(event.request)
       .then((networkResponse) => {
@@ -107,7 +51,6 @@ self.addEventListener('fetch', (event) => {
           if (cachedResponse) {
             return cachedResponse;
           }
-          // Navigate fallback
           if (event.request.mode === 'navigate') {
             return caches.match('/');
           }
@@ -116,138 +59,99 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// OS-level Web Push handler (fires even when the app & browser are completely closed)
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : {};
-  const title = data.title || 'Coupon Sale Alert';
+  let payload = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (_err) {
+      try {
+        payload = { body: event.data.text() };
+      } catch (_e2) {
+        payload = {};
+      }
+    }
+  }
+
+  const title = payload.title || 'SCC Trust Alert';
   const options = {
-    body: data.body || 'You have a new notification!',
-    icon: '/splash/mobile.jpg',
-    badge: '/notification-badge.png',
-    vibrate: [100, 50, 100],
-    ...data.options
+    body: payload.body || 'You have a new update.',
+    icon: payload.icon || '/splash/mobile.jpg',
+    badge: payload.badge || '/notification-badge.png',
+    vibrate: [200, 100, 200],
+    tag: payload.tag || `scc-push-${Date.now()}`,
+    renotify: true,
+    requireInteraction: false,
+    timestamp: payload.timestamp || Date.now(),
+    data: {
+      url: payload.url || '/',
+      dateOfArrival: Date.now(),
+    },
+    ...(payload.options || {}),
   };
 
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
 });
 
+// Handle notification tap: focus open window or launch app
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
-        if (client.url === '/' && 'focus' in client) {
+        if (client.url.startsWith(self.location.origin) && 'focus' in client) {
           return client.focus();
         }
       }
-      if (clients.openWindow) {
-        return clients.openWindow('/');
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
       }
     })
   );
 });
 
-// Real-time Background Collection Listeners for when the app is completely closed
+// Handle automatic browser push subscription rotation in background
+self.addEventListener('pushsubscriptionchange', (event) => {
+  event.waitUntil((async () => {
+    try {
+      let applicationServerKey = event.oldSubscription?.options?.applicationServerKey;
+      if (!applicationServerKey) {
+        const res = await fetch('/api/push/vapid-public-key', { cache: 'no-store' });
+        if (res.ok) {
+          const { publicKey } = await res.json();
+          if (publicKey) {
+            const padding = '='.repeat((4 - (publicKey.length % 4)) % 4);
+            const base64 = (publicKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+              outputArray[i] = rawData.charCodeAt(i);
+            }
+            applicationServerKey = outputArray;
+          }
+        }
+      }
+      if (!applicationServerKey) return;
 
-// 1. Transactions Listener
-let isInitialTransactions = true;
-const knownTransactions = new Set();
-db.collection('transactions').onSnapshot((snapshot) => {
-  if (!snapshot) return;
-  snapshot.docChanges().forEach((change) => {
-    const docId = change.doc.id;
-    if (change.type === 'added') {
-      if (isInitialTransactions) {
-        knownTransactions.add(docId);
-      } else if (!knownTransactions.has(docId)) {
-        knownTransactions.add(docId);
-        const data = change.doc.data();
-        sendBackgroundNotification('New Transaction Added', `${data.name || 'Unknown'} - ₹${(data.totalAmount || 0).toLocaleString('en-IN')}`);
-      }
-    } else if (change.type === 'removed') {
-      knownTransactions.delete(docId);
-    }
-  });
-  isInitialTransactions = false;
-}, (err) => {
-  console.warn("SW transactions sync error:", err);
-});
+      const newSubscription = await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey,
+      });
 
-// 2. Sponsors Listener
-let isInitialSponsors = true;
-const knownSponsors = new Map();
-db.collection('sponsors').onSnapshot((snapshot) => {
-  if (!snapshot) return;
-  snapshot.docChanges().forEach((change) => {
-    const docId = change.doc.id;
-    const data = change.doc.data();
-    if (change.type === 'added') {
-      if (isInitialSponsors) {
-        knownSponsors.set(docId, data);
-      } else if (!knownSponsors.has(docId)) {
-        knownSponsors.set(docId, data);
-        sendBackgroundNotification('New Sponsor Added', `${data.name || 'Unknown'} - ₹${(data.amount || 0).toLocaleString('en-IN')}`);
+      const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of clientsList) {
+        client.postMessage({
+          type: 'PUSH_SUBSCRIPTION_CHANGED',
+          subscription: newSubscription.toJSON(),
+        });
       }
-    } else if (change.type === 'modified') {
-      const oldData = knownSponsors.get(docId);
-      if (oldData && data.status === 'COLLECTED' && oldData.status !== 'COLLECTED') {
-        sendBackgroundNotification('Sponsor Payment Collected', `${data.name || 'Unknown'} - ₹${(data.amount || 0).toLocaleString('en-IN')}`);
-      }
-      knownSponsors.set(docId, data);
-    } else if (change.type === 'removed') {
-      knownSponsors.delete(docId);
+    } catch (err) {
+      console.warn('SW pushsubscriptionchange recovery warning:', err);
     }
-  });
-  isInitialSponsors = false;
-}, (err) => {
-  console.warn("SW sponsors sync error:", err);
-});
-
-// 3. Income & Expenses Listener
-let isInitialIncomeExpenses = true;
-const knownIncomeExpenses = new Set();
-db.collection('incomeExpenses').onSnapshot((snapshot) => {
-  if (!snapshot) return;
-  snapshot.docChanges().forEach((change) => {
-    const docId = change.doc.id;
-    if (change.type === 'added') {
-      if (isInitialIncomeExpenses) {
-        knownIncomeExpenses.add(docId);
-      } else if (!knownIncomeExpenses.has(docId)) {
-        knownIncomeExpenses.add(docId);
-        const data = change.doc.data();
-        const typeStr = (data.type || 'income').toLowerCase();
-        const typeProper = typeStr.charAt(0).toUpperCase() + typeStr.slice(1);
-        sendBackgroundNotification(`New ${typeProper} Added`, `${data.description || 'Unknown'} - ₹${(data.amount || 0).toLocaleString('en-IN')}`);
-      }
-    } else if (change.type === 'removed') {
-      knownIncomeExpenses.delete(docId);
-    }
-  });
-  isInitialIncomeExpenses = false;
-}, (err) => {
-  console.warn("SW income/expenses sync error:", err);
-});
-
-// 4. Secretary Handovers Listener
-let isInitialHandovers = true;
-const knownHandovers = new Set();
-db.collection('secretaryHandovers').onSnapshot((snapshot) => {
-  if (!snapshot) return;
-  snapshot.docChanges().forEach((change) => {
-    const docId = change.doc.id;
-    if (change.type === 'added') {
-      if (isInitialHandovers) {
-        knownHandovers.add(docId);
-      } else if (!knownHandovers.has(docId)) {
-        knownHandovers.add(docId);
-        const data = change.doc.data();
-        sendBackgroundNotification('Cash Handed Over', `${data.name || 'Unknown'} - ₹${(data.amount || 0).toLocaleString('en-IN')}`);
-      }
-    } else if (change.type === 'removed') {
-      knownHandovers.delete(docId);
-    }
-  });
-  isInitialHandovers = false;
-}, (err) => {
-  console.warn("SW handovers sync error:", err);
+  })());
 });

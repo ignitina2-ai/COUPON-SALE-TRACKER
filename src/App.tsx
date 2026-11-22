@@ -32,7 +32,14 @@ import {
   getDefaultPaymentMethodsList 
 } from './types';
 import { cn } from './lib/utils';
-import { sendNotification, requestNotificationPermission } from './lib/notifications';
+import {
+  sendNotification,
+  requestNotificationPermission,
+  syncPushSubscription,
+  unsubscribePushNotifications,
+  broadcastBackgroundPush,
+  setKnownPushSubscriptions,
+} from './lib/notifications';
 import { publicAsset } from './lib/publicAsset';
 
 // Firebase core modules and standard handlers
@@ -460,6 +467,7 @@ export default function App() {
               if (!hasPendingWrites) {
                 sendNotification('New Transaction Added', {
                   body: `${docData.name} - ₹${docData.totalAmount.toLocaleString('en-IN')}`,
+                  tag: `tx-${docData.id || change.doc.id}`,
                 });
               }
             }
@@ -504,6 +512,7 @@ export default function App() {
               if (!hasPendingWrites) {
                 sendNotification('New Sponsor Added', {
                   body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
+                  tag: `sp-${docData.id || change.doc.id}`,
                 });
               }
             }
@@ -548,6 +557,7 @@ export default function App() {
                 const typeProper = typeStr.charAt(0).toUpperCase() + typeStr.slice(1);
                 sendNotification(`New ${typeProper} Added`, {
                   body: `${docData.description} - ₹${docData.amount.toLocaleString('en-IN')}`,
+                  tag: `ie-${docData.id || change.doc.id}`,
                 });
               }
             }
@@ -590,6 +600,7 @@ export default function App() {
               if (!hasPendingWrites) {
                 sendNotification('Cash Handed Over', {
                   body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
+                  tag: `sh-${docData.id || change.doc.id}`,
                 });
               }
             }
@@ -772,6 +783,7 @@ export default function App() {
               const authorLabel = updatedBy ? ` by ${updatedBy}` : '';
               sendNotification('Prize Collection Updated', {
                 body: `Prize records updated in real-time${authorLabel}`,
+                tag: `prize-${currentTimestamp}`,
               });
             }
           }
@@ -786,6 +798,19 @@ export default function App() {
         console.warn("Prize Collection state sync notice:", err);
       });
       activeSubscriptions.push(unsubPrizeCollectionState);
+
+      // 9. Web Push Subscriptions Registry Listener & Device Auto-Registration
+      const unsubPushSubs = onSnapshot(collection(db, 'pushSubscriptions'), (snap) => {
+        const list = snap.docs.map((d) => ({ ...d.data(), id: d.id } as any));
+        setKnownPushSubscriptions(list);
+      }, (err) => {
+        console.warn("Push subscriptions sync notice:", err);
+      });
+      activeSubscriptions.push(unsubPushSubs);
+
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        void syncPushSubscription(auth.currentUser?.email);
+      }
     }
 
     return () => {
@@ -912,7 +937,13 @@ export default function App() {
         });
       }
 
-      // 3. Complete Firebase Auth sign out
+      // 3. Unregister closed-app push subscription for signed-out device, then sign out
+      await Promise.race([
+        unsubscribePushNotifications(true),
+        new Promise((resolve) => setTimeout(resolve, 1200)),
+      ]);
+
+      // 4. Complete Firebase Auth sign out
       await signOut(auth);
     } catch (err) {
       console.error("Logout error:", err);
@@ -1120,17 +1151,21 @@ export default function App() {
 
   useEffect(() => {
     const checkNotificationPermission = async () => {
-      if ('Notification' in window && Notification.permission === 'default') {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'default') {
         setShowNotificationPrompt(true);
+      } else if (Notification.permission === 'granted' && user && !user.isLocal) {
+        void syncPushSubscription(user.email);
       }
     };
-    checkNotificationPermission();
-  }, []);
+    void checkNotificationPermission();
+  }, [user]);
 
   const handleRequestPermission = async () => {
     const granted = await requestNotificationPermission();
     if (granted) {
-      toggleNotifications(true);
+      await toggleNotifications(true);
+      await syncPushSubscription(user?.email);
     }
     setShowNotificationPrompt(false);
   };
@@ -1236,6 +1271,13 @@ export default function App() {
     if (appData.notificationsEnabled) {
       sendNotification('New Transaction Added', {
         body: `${docData.name} - ₹${docData.totalAmount.toLocaleString('en-IN')}`,
+        tag: `tx-${docData.id}`,
+      });
+      void broadcastBackgroundPush({
+        title: 'New Transaction Added',
+        body: `${docData.name} - ₹${docData.totalAmount.toLocaleString('en-IN')}`,
+        tag: `tx-${docData.id}`,
+        url: '/',
       });
     }
 
@@ -1257,6 +1299,8 @@ export default function App() {
       return;
     }
 
+    const previousTx = appData.transactions.find(t => t.id === id);
+
     // 1. Instant Optimistic UI Update (0ms delay)
     let updatedTx: Transaction | null = null;
     setAppData(prev => {
@@ -1268,6 +1312,21 @@ export default function App() {
         transactions: prev.transactions.map(t => t.id === id ? updatedTx! : t)
       };
     });
+
+    if (
+      appData.notificationsEnabled &&
+      previousTx &&
+      typeof updates.paidAmount === 'number' &&
+      updates.paidAmount > (previousTx.paidAmount || 0)
+    ) {
+      const paidDelta = updates.paidAmount - (previousTx.paidAmount || 0);
+      void broadcastBackgroundPush({
+        title: 'Credit Payment Collected',
+        body: `${previousTx.name} paid ₹${paidDelta.toLocaleString('en-IN')}`,
+        tag: `credit-${id}-${Date.now()}`,
+        url: '/',
+      });
+    }
 
     // 2. Background Firestore update
     commitFirestoreWrite(
@@ -1385,6 +1444,13 @@ export default function App() {
       if (appData.notificationsEnabled) {
         sendNotification('New Sponsor Added', {
           body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
+          tag: `sp-${docData.id}`,
+        });
+        void broadcastBackgroundPush({
+          title: 'New Sponsor Added',
+          body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
+          tag: `sp-${docData.id}`,
+          url: '/',
         });
       }
     } catch (err) {
@@ -1407,6 +1473,13 @@ export default function App() {
       if (appData.notificationsEnabled && updates.status === 'COLLECTED' && oldSponsor?.status !== 'COLLECTED') {
         sendNotification('Sponsor Payment Collected', {
           body: `${oldSponsor?.name} - ₹${oldSponsor?.amount.toLocaleString('en-IN')}`,
+          tag: `sp-col-${id}`,
+        });
+        void broadcastBackgroundPush({
+          title: 'Sponsor Payment Collected',
+          body: `${oldSponsor?.name} - ₹${oldSponsor?.amount.toLocaleString('en-IN')}`,
+          tag: `sp-col-${id}`,
+          url: '/',
         });
       }
     } catch (err) {
@@ -1447,8 +1520,17 @@ export default function App() {
       );
 
       if (appData.notificationsEnabled) {
-        sendNotification(`New ${docData.type.toLowerCase()} Added`, {
+        const typeStr = (docData.type || 'income').toLowerCase();
+        const typeProper = typeStr.charAt(0).toUpperCase() + typeStr.slice(1);
+        sendNotification(`New ${typeProper} Added`, {
           body: `${docData.description} - ₹${docData.amount.toLocaleString('en-IN')}`,
+          tag: `ie-${docData.id}`,
+        });
+        void broadcastBackgroundPush({
+          title: `New ${typeProper} Added`,
+          body: `${docData.description} - ₹${docData.amount.toLocaleString('en-IN')}`,
+          tag: `ie-${docData.id}`,
+          url: '/',
         });
       }
     } catch (err) {
@@ -1508,6 +1590,13 @@ export default function App() {
       if (appData.notificationsEnabled) {
         sendNotification('Cash Handed Over', {
           body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
+          tag: `sh-${docData.id}`,
+        });
+        void broadcastBackgroundPush({
+          title: 'Cash Handed Over',
+          body: `${docData.name} - ₹${docData.amount.toLocaleString('en-IN')}`,
+          tag: `sh-${docData.id}`,
+          url: '/',
         });
       }
     } catch (err) {
@@ -1615,10 +1704,16 @@ export default function App() {
 
   const toggleNotifications = async (enabled: boolean) => {
     try {
+      setAppData(prev => ({ ...prev, notificationsEnabled: enabled }));
       await commitFirestoreWrite(
         setDoc(doc(db, 'settings', 'global'), { notificationsEnabled: enabled }, { merge: true }),
         'settings/global'
       );
+      if (enabled) {
+        await syncPushSubscription(user?.email);
+      } else {
+        await unsubscribePushNotifications(true);
+      }
     } catch (err) {
       handleFirestoreError(err, OperationType.WRITE, 'settings/global');
     }
@@ -2159,20 +2254,20 @@ export default function App() {
                           <BellRing className="text-white" size={24} />
                         </div>
                         <div>
-                          <h3 className="text-lg font-black tracking-tight">Enable Push Notifications</h3>
-                          <p className="text-blue-100 text-sm font-medium">Get real-time updates for sales and sponsor collections.</p>
+                          <h3 className="text-lg font-black tracking-tight">Enable Closed-App Push Notifications</h3>
+                          <p className="text-blue-100 text-sm font-medium">Get instant alerts for sales, credits, and collections even when the app is closed.</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 w-full md:w-auto">
                         <button 
                           onClick={() => setShowNotificationPrompt(false)}
-                          className="flex-1 md:flex-none px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm transition-all"
+                          className="flex-1 md:flex-none px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm transition-all cursor-pointer"
                         >
                           Later
                         </button>
                         <button 
                           onClick={handleRequestPermission}
-                          className="flex-1 md:flex-none px-6 py-3 bg-white text-blue-600 rounded-xl font-bold text-sm shadow-lg hover:bg-blue-50 transition-all active:scale-95"
+                          className="flex-1 md:flex-none px-6 py-3 bg-white text-blue-600 rounded-xl font-bold text-sm shadow-lg hover:bg-blue-50 transition-all active:scale-95 cursor-pointer"
                         >
                           Enable Now
                         </button>
