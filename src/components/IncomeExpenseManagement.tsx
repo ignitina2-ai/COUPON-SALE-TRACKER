@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Plus, 
   Minus, 
@@ -78,15 +79,112 @@ const IncomeExpenseManagement: React.FC<IncomeExpenseManagementProps> = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittingError, setSubmittingError] = useState<string | null>(null);
+  const [previewReceipt, setPreviewReceipt] = useState<{
+    url: string;
+    name: string;
+    description?: string;
+    amount?: number;
+    date?: string;
+    type?: EntryType;
+  } | null>(null);
+  const [imageLoadError, setImageLoadError] = useState(false);
+  const [previewBlobUrl, setPreviewBlobUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setImageLoadError(false);
+    let activeBlobUrl: string | null = null;
+
+    if (previewReceipt?.url && previewReceipt.url.startsWith('data:')) {
+      try {
+        const [meta, base64Data] = previewReceipt.url.split(',');
+        if (meta && base64Data) {
+          const mimeMatch = meta.match(/data:([^;]+)/);
+          const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+          const byteChars = atob(base64Data);
+          const byteNumbers = new Array(byteChars.length);
+          for (let i = 0; i < byteChars.length; i++) {
+            byteNumbers[i] = byteChars.charCodeAt(i);
+          }
+          const blob = new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
+          activeBlobUrl = URL.createObjectURL(blob);
+          setPreviewBlobUrl(activeBlobUrl);
+        } else {
+          setPreviewBlobUrl(null);
+        }
+      } catch (err) {
+        console.warn('Could not convert data URL to blob URL for preview:', err);
+        setPreviewBlobUrl(null);
+      }
+    } else {
+      setPreviewBlobUrl(null);
+    }
+
+    return () => {
+      if (activeBlobUrl) {
+        URL.revokeObjectURL(activeBlobUrl);
+      }
+    };
+  }, [previewReceipt]);
+
+  useEffect(() => {
+    if (!previewReceipt) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreviewReceipt(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewReceipt]);
+
+  const isPdfReceipt = (receipt: { url: string; name: string }) => {
+    const lowerUrl = receipt.url.toLowerCase();
+    const lowerName = receipt.name.toLowerCase();
+    return lowerUrl.startsWith('data:application/pdf') || lowerName.endsWith('.pdf') || lowerUrl.includes('.pdf?');
+  };
+
+  const handleDownloadReceipt = async () => {
+    if (!previewReceipt) return;
+    const fileName = previewReceipt.name || 'receipt';
+    try {
+      const targetHref = previewBlobUrl || previewReceipt.url;
+      if (previewReceipt.url.startsWith('http')) {
+        const res = await fetch(previewReceipt.url);
+        const blob = await res.blob();
+        const objUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = objUrl;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(objUrl), 2000);
+      } else {
+        const link = document.createElement('a');
+        link.href = targetHref;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+    } catch (err) {
+      const link = document.createElement('a');
+      link.href = previewBlobUrl || previewReceipt.url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    }
+  };
 
   const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
 
+    setSubmittingError(null);
     setIsUploadingReceipt(true);
     try {
       if (file.size > 5 * 1024 * 1024) {
-        alert("Maximum attachment size: 5MB to ensure optimal local performance.");
+        setSubmittingError("Maximum attachment size: 5MB to ensure optimal performance.");
         setIsUploadingReceipt(false);
         return;
       }
@@ -140,7 +238,7 @@ const IncomeExpenseManagement: React.FC<IncomeExpenseManagementProps> = ({
       }
     } catch (err: any) {
       console.error("Receipt upload failed:", err);
-      alert("Failed to process attachment file: " + (err.message || err));
+      setSubmittingError("Failed to process attachment file: " + (err.message || err));
       setIsUploadingReceipt(false);
     }
   };
@@ -772,7 +870,22 @@ const IncomeExpenseManagement: React.FC<IncomeExpenseManagementProps> = ({
                   </div>
                 ) : formData.receiptUrl ? (
                   <div className="flex items-center gap-2 bg-emerald-50 text-emerald-800 border border-emerald-100/60 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm">
-                    <span className="max-w-[130px] truncate text-[11px] font-black">{formData.receiptName || 'receipt.pdf'}</span>
+                    <span className="max-w-[130px] truncate text-[11px] font-black">{formData.receiptName || 'Receipt'}</span>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewReceipt({
+                        url: formData.receiptUrl,
+                        name: formData.receiptName || 'Receipt Attachment',
+                        description: formData.description || 'Receipt Preview',
+                        amount: formData.amount ? Number(formData.amount) : undefined,
+                        date: formData.date,
+                        type: formData.type,
+                      })}
+                      className="text-blue-600 hover:text-blue-700 transition cursor-pointer"
+                      title="Preview attachment"
+                    >
+                      <Eye size={13} />
+                    </button>
                     <button 
                       type="button"
                       onClick={handleDeleteReceipt}
@@ -958,9 +1071,24 @@ const IncomeExpenseManagement: React.FC<IncomeExpenseManagementProps> = ({
                             </span>
                           )}
                           {entry.receiptUrl && (
-                            <span className="inline-flex items-center gap-0.5 text-[8px] font-black text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-sans uppercase">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setPreviewReceipt({
+                                  url: entry.receiptUrl!,
+                                  name: entry.receiptName || 'Receipt Attachment',
+                                  description: entry.description,
+                                  amount: entry.amount,
+                                  date: entry.date,
+                                  type: entry.type,
+                                });
+                              }}
+                              className="inline-flex items-center gap-0.5 text-[8px] font-black text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/60 px-1.5 py-0.5 rounded font-sans uppercase cursor-pointer"
+                              title="View Receipt"
+                            >
                               <FileText size={8} /> Attachment
-                            </span>
+                            </button>
                           )}
                         </div>
                       </div>
@@ -1005,15 +1133,24 @@ const IncomeExpenseManagement: React.FC<IncomeExpenseManagementProps> = ({
                             {entry.receiptName || 'Receipt Attachment'}
                           </span>
                         </div>
-                        <a 
-                          href={entry.receiptUrl} 
-                          target="_blank" 
-                          rel="noreferrer" 
-                          className="text-blue-505 hover:text-blue-700 text-[10px] font-black shrink-0 flex items-center gap-0.5 cursor-pointer"
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPreviewReceipt({
+                              url: entry.receiptUrl!,
+                              name: entry.receiptName || 'Receipt Attachment',
+                              description: entry.description,
+                              amount: entry.amount,
+                              date: entry.date,
+                              type: entry.type,
+                            });
+                          }}
+                          className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-black shrink-0 flex items-center gap-1 cursor-pointer shadow-xs active:scale-95 transition-all"
                         >
                           <Eye size={12} />
                           <span>View Receipt</span>
-                        </a>
+                        </button>
                       </div>
                     )}
 
@@ -1069,6 +1206,101 @@ const IncomeExpenseManagement: React.FC<IncomeExpenseManagementProps> = ({
         confirmText="Delete"
         variant="danger"
       />
+
+      {previewReceipt && typeof document !== 'undefined' && createPortal(
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setPreviewReceipt(null); }}
+          className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150"
+        >
+          <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-modal-pop">
+            {/* Modal Header */}
+            <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <FileText size={16} className="text-blue-600 shrink-0" />
+                  <h3 className="text-xs sm:text-sm font-black text-slate-900 truncate">
+                    {previewReceipt.description || previewReceipt.name || 'Receipt Preview'}
+                  </h3>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 mt-0.5 text-[10px] font-bold text-slate-500">
+                  <span className="truncate max-w-[200px]">{previewReceipt.name}</span>
+                  {typeof previewReceipt.amount === 'number' && !isNaN(previewReceipt.amount) && (
+                    <span className={cn(
+                      "px-1.5 py-0.2 rounded font-black",
+                      previewReceipt.type === 'INCOME' ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                    )}>
+                      ₹{previewReceipt.amount.toLocaleString('en-IN')}
+                    </span>
+                  )}
+                  {previewReceipt.date && (
+                    <span>{(() => {
+                      const d = new Date(previewReceipt.date);
+                      return isNaN(d.getTime()) ? previewReceipt.date : format(d, 'dd.MM.yyyy');
+                    })()}</span>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewReceipt(null)}
+                className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer shrink-0 active:scale-95"
+                aria-label="Close receipt preview"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Viewer Body */}
+            <div className="flex-1 overflow-auto bg-slate-900/5 p-3 sm:p-4 flex items-center justify-center min-h-[240px]">
+              {isPdfReceipt(previewReceipt) ? (
+                <div className="w-full flex flex-col items-center gap-3">
+                  <iframe
+                    src={previewBlobUrl || previewReceipt.url}
+                    title={previewReceipt.name}
+                    className="w-full h-[60vh] rounded-xl border border-slate-200 bg-white"
+                  />
+                  <p className="text-[11px] font-semibold text-slate-500 text-center">
+                    If the PDF preview does not display on mobile, tap Download below to open it.
+                  </p>
+                </div>
+              ) : !imageLoadError ? (
+                <img
+                  src={previewBlobUrl || previewReceipt.url}
+                  alt={previewReceipt.name}
+                  onError={() => setImageLoadError(true)}
+                  className="max-w-full max-h-[68vh] w-auto h-auto object-contain rounded-xl shadow-md bg-white"
+                />
+              ) : (
+                <div className="text-center p-6 bg-white rounded-2xl border border-slate-200 max-w-sm space-y-2">
+                  <AlertCircle size={28} className="text-amber-500 mx-auto" />
+                  <p className="text-xs font-bold text-slate-800">Unable to display preview directly</p>
+                  <p className="text-[11px] text-slate-500">Tap Download Receipt below to view this file on your device.</p>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-4 py-3 bg-white border-t border-slate-200 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleDownloadReceipt}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm transition cursor-pointer active:scale-95"
+              >
+                <Download size={14} />
+                <span>Download Receipt</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewReceipt(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };
