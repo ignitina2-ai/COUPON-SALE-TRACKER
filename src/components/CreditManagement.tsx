@@ -23,7 +23,9 @@ import {
   QrCode,
   Copy,
   Check,
-  Printer
+  Printer,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { Transaction, CreditSettings, PaymentMethod, DEFAULT_PAYMENT_LABELS, CustomPaymentMethod } from '@/types';
 import { cn, calculateCouponRangeFromBookString } from '@/lib/utils';
@@ -58,6 +60,7 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [overdueDaysFilter, setOverdueDaysFilter] = useState<number>(0);
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [paymentModal, setPaymentModal] = useState<{ id: string, amount: number, paymentMethod: PaymentMethod } | null>(null);
   const [isCollapsedMode, setIsCollapsedMode] = useState(true);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -75,15 +78,30 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
     setExpandedIds(newSet);
   };
 
-  const creditTransactions = transactions.filter(t => t.creditAmount > 0);
+  const creditTransactions = (transactions || []).filter(t => t.creditAmount > 0);
 
-  const filteredCredits = creditTransactions.filter(t => {
-    const days = differenceInDays(new Date(), new Date(t.date));
-    const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         t.area.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesOverdue = days >= overdueDaysFilter;
-    return matchesSearch && matchesOverdue;
-  });
+  const filteredCredits = creditTransactions
+    .filter(t => {
+      const days = differenceInDays(new Date(), new Date(t.date));
+      const matchesSearch = (t.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           (t.area || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesOverdue = days >= overdueDaysFilter;
+      return matchesSearch && matchesOverdue;
+    })
+    .sort((a, b) => {
+      const dateA = a.date ? new Date(a.date).getTime() : 0;
+      const dateB = b.date ? new Date(b.date).getTime() : 0;
+
+      const valA = isNaN(dateA) ? 0 : dateA;
+      const valB = isNaN(dateB) ? 0 : dateB;
+
+      const diff = sortOrder === 'desc' ? valB - valA : valA - valB;
+      if (diff !== 0) return diff;
+
+      const idA = a.id || '';
+      const idB = b.id || '';
+      return sortOrder === 'desc' ? idB.localeCompare(idA) : idA.localeCompare(idB);
+    });
 
   const handleRecordPayment = (id: string, amount: number, paymentMethod: PaymentMethod) => {
     const transaction = transactions.find(t => t.id === id);
@@ -429,7 +447,7 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white p-2 md:p-3 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm print:hidden">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-white p-2 md:p-3 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm print:hidden">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
           <input 
@@ -452,6 +470,16 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
             <option value={15}>15+ Days Overdue</option>
             <option value={30}>30+ Days Overdue</option>
           </select>
+        </div>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+            className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg md:rounded-xl text-slate-700 font-semibold hover:bg-slate-100 transition-all text-[10px] md:text-xs cursor-pointer"
+          >
+            {sortOrder === 'desc' ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            <span>{sortOrder === 'desc' ? 'Date: Newest First' : 'Date: Oldest First'}</span>
+          </button>
         </div>
       </div>
 
@@ -552,21 +580,31 @@ const CreditManagement: React.FC<CreditManagementProps> = ({
                     <div>
                       <p className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Payment History</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {t.paymentHistory.map((entry) => {
-                          const mLabel = entry.paymentMethod 
-                            ? (customPaymentLabels?.[entry.paymentMethod] || DEFAULT_PAYMENT_LABELS[entry.paymentMethod])
-                            : 'Cash';
-                          return (
-                            <div key={entry.id} className="bg-slate-50 px-2 py-1 rounded-lg flex items-center gap-1">
-                              <CheckCircle2 size={10} className="text-emerald-500 shrink-0" />
-                              <span className="text-[10px] font-bold text-slate-700 font-sans">₹{entry.amount}</span>
-                              <span className="text-[8px] text-slate-400 font-black uppercase tracking-wider bg-white px-1 py-0.5 rounded border border-slate-100">
-                                {mLabel}
-                              </span>
-                              <span className="text-[9px] text-slate-400">{format(new Date(entry.date), 'dd.MM.yyyy')}</span>
-                            </div>
-                          );
-                        })}
+                        {[...t.paymentHistory]
+                          .sort((a, b) => {
+                            const dA = a.date ? new Date(a.date).getTime() : 0;
+                            const dB = b.date ? new Date(b.date).getTime() : 0;
+                            return (isNaN(dB) ? 0 : dB) - (isNaN(dA) ? 0 : dA);
+                          })
+                          .map((entry) => {
+                            const mLabel = entry.paymentMethod 
+                              ? (customPaymentLabels?.[entry.paymentMethod] || DEFAULT_PAYMENT_LABELS[entry.paymentMethod] || entry.paymentMethod)
+                              : 'Cash';
+                            const parsedEntryDate = entry.date ? new Date(entry.date) : null;
+                            const formattedEntryDate = parsedEntryDate && !isNaN(parsedEntryDate.getTime())
+                              ? format(parsedEntryDate, 'dd.MM.yyyy')
+                              : (entry.date || '-');
+                            return (
+                              <div key={entry.id} className="bg-slate-50 px-2 py-1 rounded-lg flex items-center gap-1">
+                                <CheckCircle2 size={10} className="text-emerald-500 shrink-0" />
+                                <span className="text-[10px] font-bold text-slate-700 font-sans">₹{entry.amount}</span>
+                                <span className="text-[8px] text-slate-400 font-black uppercase tracking-wider bg-white px-1 py-0.5 rounded border border-slate-100">
+                                  {mLabel}
+                                </span>
+                                <span className="text-[9px] text-slate-400">{formattedEntryDate}</span>
+                              </div>
+                            );
+                          })}
                       </div>
                     </div>
                   )}
